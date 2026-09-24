@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ClockFace } from "@/components/clock-face";
+import { lessonScreenSpeech, RondHalfLesson } from "@/components/rond-half-lesson";
+import { ExplanationSteps, PhraseChips, stepsToSpeech } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,13 +27,13 @@ import {
   formatDigitalTime,
   formatDutchTime,
   LEARNING_STEPS,
-  minuteHint,
   normalizeHour,
   normalizeSpokenText,
   pronunciationScore,
   type LearningLevel,
 } from "@/lib/dutch-time";
 import { speechClipPath } from "@/lib/speech-clips";
+import { explainTime } from "@/lib/time-explainer";
 
 type AppTab = "discover" | "practice" | "speak";
 type AnswerState = "idle" | "wrong" | "correct";
@@ -66,6 +68,7 @@ type SavedProgress = {
   streak: number;
   unlockedLevel: LearningLevel;
   levelWins: Partial<Record<LearningLevel, number>>;
+  seenRondHalfLesson: boolean;
 };
 
 type RecognitionResultEvent = {
@@ -108,6 +111,7 @@ const DEFAULT_PROGRESS: SavedProgress = {
   // The supplied worksheet starts at kwartieren; keep earlier skills open for review.
   unlockedLevel: 3,
   levelWins: {},
+  seenRondHalfLesson: false,
 };
 
 const STORAGE_KEY = "tijdmaatjes-progress-v1";
@@ -226,18 +230,58 @@ export function TijdmaatjesApp() {
   const [speechFeedback, setSpeechFeedback] = useState("");
   const audioCache = useRef(new Map<string, { buffer: AudioBuffer; gain: number }>());
   const audioContextRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const playbackRef = useRef(0);
+  const [lessonOpen, setLessonOpen] = useState(false);
+  const [lessonRun, setLessonRun] = useState(0);
+  const [showSpeakWhy, setShowSpeakWhy] = useState(false);
   const recognitionRef = useRef<RecognitionInstance | null>(null);
 
   const phrase = formatDutchTime(hour, minute);
   const speakPhrase = formatDutchTime(speakTime.hour, speakTime.minute);
+  const explanation = useMemo(() => explainTime(hour, minute), [hour, minute]);
+  const questionExplanation = useMemo(() => explainTime(question.hour, question.minute), [question]);
+  const speakExplanation = useMemo(() => explainTime(speakTime.hour, speakTime.minute), [speakTime]);
   const currentStep = LEARNING_STEPS[level - 1];
   const levelWins = progress.levelWins[level] ?? 0;
   const levelProgress = Math.min(100, (levelWins / 3) * 100);
 
   useEffect(() => () => recognitionRef.current?.abort(), []);
 
-  const speak = useCallback(async (text: string) => {
+  const loadClip = useCallback(async (context: AudioContext, text: string) => {
+    let clip = audioCache.current.get(text);
+    if (!clip) {
+      // Prefer the pre-generated clip; only ask ElevenLabs for phrases without one.
+      let response = await fetch(speechClipPath(text));
+      if (!response.ok || !response.headers.get("content-type")?.startsWith("audio/")) {
+        response = await fetch(`/api/tts?text=${encodeURIComponent(text)}`);
+      }
+      if (!response.ok) throw new Error("Hosted voice is not configured");
+      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      clip = { buffer, gain: normalizingGain(buffer) };
+      audioCache.current.set(text, clip);
+    }
+    return clip;
+  }, []);
+
+  /** Stops whatever is playing; any running `speak` sequence ends at its next step. */
+  const stopSpeech = useCallback(() => {
+    playbackRef.current += 1;
+    try {
+      currentSourceRef.current?.stop();
+    } catch {
+      // Already stopped.
+    }
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    setAudioState("idle");
+  }, []);
+
+  /** Speaks one text, or several in order with a short pause between them. */
+  const speak = useCallback(async (input: string | string[]) => {
     if (typeof window === "undefined") return;
+    const texts = Array.isArray(input) ? input : [input];
+    stopSpeech();
+    const playback = playbackRef.current;
     setAudioState("loading");
 
     try {
@@ -245,46 +289,46 @@ export function TijdmaatjesApp() {
       audioContextRef.current ??= new AudioContext();
       const context = audioContextRef.current;
       const resumed = context.resume();
-
-      let clip = audioCache.current.get(text);
-      if (!clip) {
-        // Prefer the pre-generated clip; only ask ElevenLabs for phrases without one.
-        let response = await fetch(speechClipPath(text));
-        if (!response.ok || !response.headers.get("content-type")?.startsWith("audio/")) {
-          response = await fetch(`/api/tts?text=${encodeURIComponent(text)}`);
-        }
-        if (!response.ok) throw new Error("Hosted voice is not configured");
-        const buffer = await context.decodeAudioData(await response.arrayBuffer());
-        clip = { buffer, gain: normalizingGain(buffer) };
-        audioCache.current.set(text, clip);
-      }
+      const clips = await Promise.all(texts.map((text) => loadClip(context, text)));
       await resumed;
 
-      const source = context.createBufferSource();
-      const gain = context.createGain();
-      source.buffer = clip.buffer;
-      gain.gain.value = clip.gain;
-      source.connect(gain).connect(context.destination);
-      source.onended = () => setAudioState("idle");
-      setAudioState("playing");
-      source.start();
-      return;
+      for (const [index, clip] of clips.entries()) {
+        if (playback !== playbackRef.current) return;
+        if (index > 0) await new Promise((resolve) => setTimeout(resolve, 350));
+        if (playback !== playbackRef.current) return;
+        setAudioState("playing");
+        await new Promise<void>((resolve) => {
+          const source = context.createBufferSource();
+          const gain = context.createGain();
+          source.buffer = clip.buffer;
+          gain.gain.value = clip.gain;
+          source.connect(gain).connect(context.destination);
+          source.onended = () => resolve();
+          currentSourceRef.current = source;
+          source.start();
+        });
+      }
+      if (playback === playbackRef.current) setAudioState("idle");
     } catch {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "nl-NL";
-      utterance.rate = 0.78;
-      utterance.pitch = 1.04;
+      if (playback !== playbackRef.current) return;
       const voice = window.speechSynthesis
         .getVoices()
         .find((candidate) => candidate.lang.toLowerCase().startsWith("nl"));
-      if (voice) utterance.voice = voice;
-      utterance.onstart = () => setAudioState("playing");
-      utterance.onend = () => setAudioState("idle");
-      utterance.onerror = () => setAudioState("idle");
-      window.speechSynthesis.speak(utterance);
+      texts.forEach((text, index) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "nl-NL";
+        utterance.rate = 0.78;
+        utterance.pitch = 1.04;
+        if (voice) utterance.voice = voice;
+        if (index === 0) utterance.onstart = () => setAudioState("playing");
+        if (index === texts.length - 1) {
+          utterance.onend = () => setAudioState("idle");
+          utterance.onerror = () => setAudioState("idle");
+        }
+        window.speechSynthesis.speak(utterance);
+      });
     }
-  }, []);
+  }, [loadClip, stopSpeech]);
 
   const chooseLevel = useCallback((nextLevel: LearningLevel) => {
     const sample = LEARNING_STEPS[nextLevel - 1].sample;
@@ -295,6 +339,27 @@ export function TijdmaatjesApp() {
     setSelectedAnswer(null);
     setAnswerState("idle");
   }, []);
+
+  function openLesson() {
+    setLessonRun((run) => run + 1);
+    setLessonOpen(true);
+    speak(lessonScreenSpeech(0));
+  }
+
+  function closeLesson() {
+    setLessonOpen(false);
+    stopSpeech();
+    setProgress((current) => ({ ...current, seenRondHalfLesson: true }));
+  }
+
+  // Mission buttons are a child's tap, so the first visit to "Rond half" may start the lesson with sound.
+  function selectMission(nextLevel: LearningLevel) {
+    chooseLevel(nextLevel);
+    if (nextLevel === 5 && !progress.seenRondHalfLesson) {
+      setActiveTab("discover");
+      openLesson();
+    }
+  }
 
   function adjustTime(kind: "hour" | "minute", amount: number) {
     if (kind === "hour") {
@@ -313,6 +378,7 @@ export function TijdmaatjesApp() {
     if (choice !== question.correct) {
       setAnswerState("wrong");
       setProgress((current) => ({ ...current, streak: 0 }));
+      speak(stepsToSpeech(questionExplanation.steps));
       return;
     }
 
@@ -333,6 +399,7 @@ export function TijdmaatjesApp() {
   }
 
   function nextQuestion() {
+    stopSpeech();
     setQuestion(createQuestion(level));
     setSelectedAnswer(null);
     setAnswerState("idle");
@@ -346,6 +413,7 @@ export function TijdmaatjesApp() {
     });
     setSpokenText("");
     setSpeechFeedback("");
+    setShowSpeakWhy(false);
   }
 
   function startListening() {
@@ -487,7 +555,7 @@ export function TijdmaatjesApp() {
                 key={step.id}
                 type="button"
                 className={`mission-step ${level === step.id ? "is-active" : ""} ${unlocked ? "is-unlocked" : ""}`}
-                onClick={() => chooseLevel(step.id)}
+                onClick={() => selectMission(step.id)}
                 aria-pressed={level === step.id}
                 title={unlocked ? step.title : "Je mag alvast even kijken"}
               >
@@ -517,6 +585,7 @@ export function TijdmaatjesApp() {
               hour={hour}
               minute={minute}
               interactive
+              guide={level === 5 ? explanation : null}
               onChange={(nextHour, nextMinute) => {
                 setHour(nextHour);
                 setMinute(nextMinute);
@@ -539,8 +608,8 @@ export function TijdmaatjesApp() {
           <section className="answer-stage" aria-labelledby="current-phrase">
             <div className="lesson-badge">Missie {level} · {currentStep.title}</div>
             <p className="question-label">Hoe laat is het?</p>
-            <div className="spoken-phrase" id="current-phrase" lang="nl-NL">
-              {phraseParts.map((part, index) => <span key={`${part}-${index}`}>{part}</span>)}
+            <div className="spoken-phrase" id="current-phrase">
+              <PhraseChips explanation={explanation} />
             </div>
             <p className="say-slowly">Zeg rustig mee: {phraseParts.join(" · ")}</p>
 
@@ -562,6 +631,11 @@ export function TijdmaatjesApp() {
               <div>
                 <strong>Kloktruc</strong>
                 <p>{currentStep.description}</p>
+                {level === 5 && (
+                  <Button variant="outline" size="sm" className="lesson-open-button" onClick={openLesson}>
+                    <Sparkles aria-hidden="true" /> Uitleg: de halte
+                  </Button>
+                )}
               </div>
             </div>
           </section>
@@ -579,7 +653,12 @@ export function TijdmaatjesApp() {
                 <Progress value={levelProgress} />
               </div>
             </div>
-            <ClockFace hour={question.hour} minute={question.minute} compact />
+            <ClockFace
+              hour={question.hour}
+              minute={question.minute}
+              compact
+              guide={answerState === "wrong" ? questionExplanation : null}
+            />
             <Button variant="outline" className="hear-question" onClick={() => speak(question.correct)}>
               <Ear aria-hidden="true" /> Hoor de tijd
             </Button>
@@ -615,7 +694,13 @@ export function TijdmaatjesApp() {
             <div className={`feedback-box ${answerState}`} aria-live="polite">
               {answerState === "idle" && <p>Kijk eerst naar de lange wijzer.</p>}
               {answerState === "wrong" && (
-                <p><Lightbulb aria-hidden="true" /> Bijna! {minuteHint(question.minute)}</p>
+                <div className="hint-explanation">
+                  <p><Lightbulb aria-hidden="true" /> Bijna! Zo kijk je naar de klok:</p>
+                  <ExplanationSteps steps={questionExplanation.steps} />
+                  <Button variant="outline" size="sm" onClick={() => speak(stepsToSpeech(questionExplanation.steps))}>
+                    <Volume2 aria-hidden="true" /> Hoor de uitleg
+                  </Button>
+                </div>
               )}
               {answerState === "correct" && (
                 <div>
@@ -630,13 +715,28 @@ export function TijdmaatjesApp() {
         <TabsContent value="speak" className="workspace-card speaking-layout">
           <section className="speaking-clock">
             <div className="card-kicker"><Mic aria-hidden="true" /> Luister, spreek, groei</div>
-            <ClockFace hour={speakTime.hour} minute={speakTime.minute} compact />
+            <ClockFace hour={speakTime.hour} minute={speakTime.minute} compact guide={showSpeakWhy ? speakExplanation : null} />
             <Button variant="outline" onClick={nextSpeakPrompt}>Andere klok <RotateCcw aria-hidden="true" /></Button>
           </section>
 
           <section className="pronunciation-coach" aria-labelledby="say-title">
             <span className="eyebrow">Uitspraakmaatje</span>
-            <h2 id="say-title" lang="nl-NL">{speakPhrase}</h2>
+            <h2 id="say-title" aria-label={speakPhrase}>
+              <PhraseChips explanation={speakExplanation} />
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              className="why-button"
+              aria-expanded={showSpeakWhy}
+              onClick={() => {
+                setShowSpeakWhy(true);
+                speak(stepsToSpeech(speakExplanation.steps));
+              }}
+            >
+              <Lightbulb aria-hidden="true" /> Waarom zeg je dit?
+            </Button>
+            {showSpeakWhy && <ExplanationSteps steps={speakExplanation.steps} />}
             <div className="pronunciation-steps">
               <div><span>1</span><p><strong>Luister</strong><small>Hoor de zin rustig.</small></p></div>
               <div><span>2</span><p><strong>Spreek</strong><small>Zeg de hele zin.</small></p></div>
@@ -675,6 +775,14 @@ export function TijdmaatjesApp() {
           </div>
         </div>
       </details>
+
+      <RondHalfLesson
+        key={lessonRun}
+        open={lessonOpen}
+        onOpenChange={(open) => (open ? setLessonOpen(true) : closeLesson())}
+        speak={speak}
+        onChallengeSolved={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
+      />
 
       <footer className="app-footer">Gemaakt om samen hardop te oefenen · Voor kinderen van 6–8 jaar</footer>
     </main>

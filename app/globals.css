@@ -33,6 +33,16 @@
   --aqua: #19a997;
   --orange: #ff8a34;
   --yellow: #ffd45a;
+  /* "Halte" teaching colors: one per clock quarter, plus the bus-stop navy. */
+  --zone-over: #d8f3ea;
+  --zone-over-ink: #0b6552;
+  --zone-voor-half: #ffefb8;
+  --zone-voor-half-ink: #6e5000;
+  --zone-over-half: #dae9ff;
+  --zone-over-half-ink: #174f8a;
+  --zone-voor: #ffe0e7;
+  --zone-voor-ink: #99233f;
+  --halte: #173f68;
   color-scheme: light;
 }
 
@@ -486,9 +496,6 @@ button { -webkit-tap-highlight-color: transparent; }
   letter-spacing: -0.055em;
 }
 
-.spoken-phrase span { display: inline-block; }
-.spoken-phrase span:first-child { color: var(--orange); }
-.spoken-phrase span:nth-child(2) { color: var(--aqua); }
 
 .say-slowly {
   margin: 16px 0 0;
@@ -763,6 +770,164 @@ button { -webkit-tap-highlight-color: transparent; }
   50% { box-shadow: 0 0 0 10px rgb(25 169 151 / 0%); }
 }
 
+/* ---- Halte teaching overlay on the clock ---- */
+.clock-zone-fill { opacity: 0.75; }
+.clock-zone.is-current .clock-zone-fill { opacity: 1; }
+.clock-zone--over .clock-zone-fill { fill: var(--zone-over); }
+.clock-zone--voor-half .clock-zone-fill { fill: var(--zone-voor-half); }
+.clock-zone--over-half .clock-zone-fill { fill: var(--zone-over-half); }
+.clock-zone--voor .clock-zone-fill { fill: var(--zone-voor); }
+
+.clock-zone-label {
+  font-size: 13px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  opacity: 0.8;
+}
+.clock-zone.is-current .clock-zone-label { opacity: 1; font-size: 14px; }
+.clock-zone--over .clock-zone-label { fill: var(--zone-over-ink); }
+.clock-zone--voor-half .clock-zone-label { fill: var(--zone-voor-half-ink); }
+.clock-zone--over-half .clock-zone-label { fill: var(--zone-over-half-ink); }
+.clock-zone--voor .clock-zone-label { fill: var(--zone-voor-ink); }
+
+.clock-halte rect { fill: #fff; stroke: var(--halte); stroke-width: 2.5; }
+.clock-halte text {
+  fill: var(--halte);
+  font-size: 13px;
+  font-weight: 950;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.clock-halte.is-current rect { fill: var(--halte); }
+.clock-halte.is-current text { fill: #fff; }
+
+.clock-jump path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-dasharray: 5 5;
+  stroke-linecap: round;
+  animation: jump-draw 0.6s ease-out both;
+}
+.clock-jump circle { fill: #fff; stroke: currentColor; stroke-width: 2.5; }
+.clock-jump text {
+  fill: currentColor;
+  font-size: 11px;
+  font-weight: 950;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.clock-jump--over { color: var(--zone-over-ink); }
+.clock-jump--voor-half { color: var(--zone-voor-half-ink); }
+.clock-jump--over-half { color: var(--zone-over-half-ink); }
+.clock-jump--voor { color: var(--zone-voor-ink); }
+
+@keyframes jump-draw {
+  from { stroke-dashoffset: 40; opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+
+.clock-number-glow { fill: #ffe7d3; stroke: var(--orange); stroke-width: 3; }
+
+/* ---- Phrase chips: count = long blue hand, hour = short orange hand ---- */
+.phrase-chips { display: inline-flex; flex-wrap: wrap; gap: 0.18em; }
+
+.phrase-chip {
+  display: inline-block;
+  padding: 0.04em 0.24em 0.1em;
+  border-radius: 0.28em;
+}
+.phrase-chip--count { background: #e3f0ff; color: var(--blue); }
+.phrase-chip--hour { background: #fff0e3; color: #b3530c; }
+.phrase-chip--half { background: var(--halte); color: #fff; }
+.phrase-chip--uur { color: var(--ink); }
+.phrase-chip--direction { background: #eef5fa; color: var(--ink); }
+.phrase-chip--over { background: var(--zone-over); color: var(--zone-over-ink); }
+.phrase-chip--voor-half { background: var(--zone-voor-half); color: var(--zone-voor-half-ink); }
+.phrase-chip--over-half { background: var(--zone-over-half); color: var(--zone-over-half-ink); }
+.phrase-chip--voor { background: var(--zone-voor); color: var(--zone-voor-ink); }
+
+.lesson-open-button, .why-button { width: fit-content; margin-top: 10px; font-weight: 900; }
+
+/* ---- Step-by-step explanation (Oefen hint, Praat "waarom") ---- */
+.explanation-steps {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+.explanation-steps li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 9px;
+}
+.explanation-steps li > span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 9px;
+  background: #fff;
+  font-weight: 950;
+}
+.explanation-steps p { margin: 0; font-weight: 750; }
+.hint-explanation > p { margin-bottom: 2px; }
+.hint-explanation button { min-height: 38px; }
+.pronunciation-coach .explanation-steps { color: #3d5a70; }
+
+/* ---- "Rond half" mini-lesson ---- */
+.lesson-dialog.lesson-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 26px;
+}
+
+.lesson-progress { display: flex; gap: 6px; }
+.lesson-progress span {
+  width: 26px;
+  height: 7px;
+  border-radius: 99px;
+  background: #d9e7f0;
+}
+.lesson-progress .is-done { background: #9cc7e6; }
+.lesson-progress .is-current { background: var(--blue); }
+
+.lesson-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+.lesson-body .clock-shell--compact { width: min(300px, 100%); margin-inline: auto; }
+
+.lesson-title { margin: 4px 0 8px; color: var(--blue-deep); font-size: 1.7rem; font-weight: 950; }
+.lesson-lines { display: grid; gap: 6px; color: #3d5a70; font-size: 1.02rem; font-weight: 750; }
+.lesson-lines p { margin: 0; }
+.lesson-phrase { margin-top: 14px; font-size: 1.9rem; font-weight: 950; letter-spacing: -0.03em; }
+
+.lesson-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #eaf9f4;
+  color: #106b59;
+  font-weight: 850;
+}
+
+.lesson-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+.lesson-nav { display: flex; gap: 8px; }
+.lesson-actions button { min-height: 44px; border-radius: 13px; font-weight: 900; }
+
 @media (max-width: 980px) {
   .mission-panel { grid-template-columns: 1fr; gap: 14px; }
 
@@ -817,6 +982,9 @@ button { -webkit-tap-highlight-color: transparent; }
   }
 
   .grownup-content { grid-template-columns: 1fr; }
+  .lesson-body { grid-template-columns: 1fr; }
+  .lesson-dialog.lesson-dialog { padding: 18px 16px; }
+  .lesson-phrase { font-size: 1.6rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

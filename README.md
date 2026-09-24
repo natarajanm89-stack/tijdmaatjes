@@ -14,6 +14,17 @@ Tijdmaatjes is a privacy-friendly Dutch clock-learning web app for children aged
 4. Vijf en tien over / voor
 5. Vijf en tien voor / over half
 
+### Explaining “voor half” and “over half”
+
+Children learn one picture: **the 6 is the _halte_ (bus stop)**. Each number is one jump of five minutes. Just before the halte you say _voor half_, just after it _over half_, and around half you always name the **next** hour (`08:25 = vijf voor half negen`).
+
+- **Ontdek** (level 5) colors the clock in four zones (over · voor half · over half · voor), marks the halte, draws numbered jump arcs, and lights up the hour that is said. The phrase is shown as chips in matching colors: blue count = long hand, orange hour = short hand.
+- **Mini-lesson “Rond half”** opens the first time level 5 is chosen (replay via _Uitleg: de halte_): five spoken screens and a drag-the-hand challenge.
+- **Oefen** turns a wrong answer into three spoken steps on a guided clock.
+- **Praat** has a _Waarom zeg je dit?_ button with the same steps.
+
+All of it comes from `explainTime()` in `lib/time-explainer.ts`, so every screen explains a time the same way.
+
 Progress and stars are stored only in the current browser. There are no accounts, ads, or analytics. Tijdmaatjes does not retain recordings; when speech recognition is used, the browser's own speech service handles that processing.
 
 ## Run locally
@@ -63,7 +74,7 @@ ELEVENLABS_VOICE_ID=...
 
 The key stays server-side. `/api/tts` uses ElevenLabs' multilingual model and the client automatically falls back to the browser voice if the service is not configured or temporarily unavailable.
 
-All 144 clock phrases (12 hours × 5-minute steps) are pre-generated into `public/audio/` and served as static files, so the app normally never calls ElevenLabs at runtime. The client plays `public/audio/<phrase>.mp3` first, then `/api/tts`, then the browser voice. After changing the voice or its settings in `lib/elevenlabs.ts`, delete `public/audio/` and regenerate:
+All 144 clock phrases (12 hours × 5-minute steps) plus the explanation and mini-lesson lines are pre-generated into `public/audio/` and served as static files, so the app normally never calls ElevenLabs at runtime. The client plays `public/audio/<phrase>.mp3` first, then `/api/tts`, then the browser voice. After changing the voice or its settings in `lib/elevenlabs.ts`, delete `public/audio/` and regenerate:
 
 ```bash
 pnpm speech:generate   # skips clips that already exist
@@ -75,7 +86,13 @@ pnpm speech:generate   # skips clips that already exist
 app/                            App shell, styles, and server-side TTS proxy
 components/clock-face.tsx       Accessible draggable SVG clock
 components/tijdmaatjes-app.tsx  Learning, practice, speech, and progress flows
+components/rond-half-lesson.tsx “Rond half” mini-lesson dialog
+components/time-explanation.tsx Phrase chips and step-by-step explanation
 lib/dutch-time.ts               Pure Dutch time-language rules
+lib/time-explainer.ts           Halte model: zones, jumps, chips, and steps per time
+lib/rond-half-lesson.ts         Mini-lesson content
+lib/speech-clips.ts             Every spoken text and its clip file name
+tests/                          Unit tests (`pnpm test`, Node's built-in runner)
 public/favicon.svg              App icon
 ```
 

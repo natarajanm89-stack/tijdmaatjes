@@ -1,12 +1,13 @@
-// Pre-generates every clock phrase with ElevenLabs into public/audio/ so the app
-// plays static files instead of calling the API. Existing clips are kept, so a
+// Pre-generates every spoken text (clock phrases, hints, lesson lines) with
+// ElevenLabs into public/audio/ so the app plays static files instead of
+// calling the API. Existing clips are kept, so a
 // rerun only fills gaps; delete a file (or public/audio/) to regenerate it.
 //
 //   pnpm speech:generate
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { requestElevenLabsSpeech } from "../lib/elevenlabs.ts";
-import { allTimePhrases, speechClipPath } from "../lib/speech-clips.ts";
+import { allSpokenTexts, speechClipPath } from "../lib/speech-clips.ts";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 for (const file of [".env.local", ".env"]) {
@@ -26,7 +27,7 @@ if (!apiKey || !voiceId) {
 mkdirSync(`${projectRoot}public/audio`, { recursive: true });
 let generated = 0;
 let skipped = 0;
-for (const phrase of allTimePhrases()) {
+for (const phrase of allSpokenTexts()) {
   const target = `${projectRoot}public${speechClipPath(phrase)}`;
   if (existsSync(target)) {
     skipped += 1;

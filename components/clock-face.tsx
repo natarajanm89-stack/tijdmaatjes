@@ -2,22 +2,93 @@
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { formatDutchTime, normalizeHour } from "@/lib/dutch-time";
+import type { ClockZone, TimeExplanation } from "@/lib/time-explainer";
 
 type ClockFaceProps = {
   hour: number;
   minute: number;
   interactive?: boolean;
   compact?: boolean;
+  /** Shows the "halte" teaching overlay: quarter zones, the 6 as bus stop, and jump arcs. */
+  guide?: TimeExplanation | null;
   onChange?: (hour: number, minute: number) => void;
 };
 
 type Hand = "hour" | "minute";
+
+const ZONES: { zone: ClockZone; from: number; label: string }[] = [
+  { zone: "over", from: 0, label: "over" },
+  { zone: "voor-half", from: 15, label: "voor half" },
+  { zone: "over-half", from: 30, label: "over half" },
+  { zone: "voor", from: 45, label: "voor" },
+];
+
+/** Point on the face for a minute mark; rounded so server and browser SVG match. */
+function markPoint(minuteMark: number, radius: number) {
+  const angle = (minuteMark * 6 * Math.PI) / 180;
+  return {
+    x: Number((160 + Math.sin(angle) * radius).toFixed(4)),
+    y: Number((160 - Math.cos(angle) * radius).toFixed(4)),
+  };
+}
+
+function ClockGuide({ guide }: { guide: TimeExplanation }) {
+  // Jumps run from the anchor (12 or halte) towards the long hand.
+  const step = guide.anchor === 60 || guide.zone === "voor-half" ? -5 : 5;
+  const hops = Array.from({ length: guide.jumps }, (_, index) => {
+    const from = (guide.anchor ?? 0) + step * index;
+    const to = from + step;
+    const start = markPoint(from, 121);
+    const end = markPoint(to, 121);
+    const bend = markPoint((from + to) / 2, 96);
+    return {
+      key: from,
+      path: `M${start.x} ${start.y} Q${bend.x} ${bend.y} ${end.x} ${end.y}`,
+      label: markPoint((from + to) / 2, 104),
+      number: index + 1,
+    };
+  });
+
+  return (
+    <g aria-hidden="true">
+      {ZONES.map(({ zone, from, label }) => {
+        const start = markPoint(from, 137);
+        const end = markPoint(from + 15, 137);
+        const text = markPoint(from + 7.5, 74);
+        // Two short lines stay clear of both the numbers and the hour-hand tip.
+        const lines = label.split(" ");
+        return (
+          <g key={zone} className={`clock-zone clock-zone--${zone} ${guide.zone === zone ? "is-current" : ""}`}>
+            <path d={`M160 160 L${start.x} ${start.y} A137 137 0 0 1 ${end.x} ${end.y} Z`} className="clock-zone-fill" />
+            <text x={text.x} y={text.y - (lines.length - 1) * 6.5} className="clock-zone-label">
+              {lines.map((line, index) => (
+                <tspan key={line} x={text.x} dy={index === 0 ? 0 : 13}>{line}</tspan>
+              ))}
+            </text>
+          </g>
+        );
+      })}
+      <g className={`clock-halte ${guide.anchor === 30 || guide.phrase.startsWith("half") ? "is-current" : ""}`}>
+        <rect x="129" y="224" width="62" height="24" rx="12" />
+        <text x="160" y="236.5">halte</text>
+      </g>
+      {hops.map((hop) => (
+        <g key={hop.key} className={`clock-jump clock-jump--${guide.zone}`}>
+          <path d={hop.path} />
+          <circle cx={hop.label.x} cy={hop.label.y} r="9" />
+          <text x={hop.label.x} y={hop.label.y + 0.5}>{hop.number}</text>
+        </g>
+      ))}
+    </g>
+  );
+}
 
 export function ClockFace({
   hour,
   minute,
   interactive = false,
   compact = false,
+  guide = null,
   onChange,
 }: ClockFaceProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -77,6 +148,7 @@ export function ClockFace({
       >
         <circle cx="160" cy="160" r="149" className="clock-rim" />
         <circle cx="160" cy="160" r="137" className="clock-face" />
+        {guide && <ClockGuide guide={guide} />}
 
         {Array.from({ length: 60 }, (_, index) => {
           const angle = index * 6;
@@ -100,10 +172,14 @@ export function ClockFace({
           // Rounded coordinates keep server and browser SVG output byte-identical.
           const x = Number((160 + Math.cos(angle) * 105).toFixed(4));
           const y = Number((160 + Math.sin(angle) * 105).toFixed(4));
+          const named = guide && normalizeHour(guide.namedHour) === number;
           return (
-            <text key={number} x={x} y={y} className="clock-number">
-              {number}
-            </text>
+            <g key={number}>
+              {named && <circle cx={x} cy={y} r="18" className="clock-number-glow" />}
+              <text x={x} y={y} className="clock-number">
+                {number}
+              </text>
+            </g>
           );
         })}
 

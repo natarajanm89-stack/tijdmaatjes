@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { requestElevenLabsSpeech } from "@/lib/elevenlabs";
 
-const DUTCH_TEXT = /^[a-zA-ZÀ-ÿ0-9\s'-]+$/;
+const DUTCH_TEXT = /^[a-zA-ZÀ-ÿ0-9\s'.,:?!-]+$/;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

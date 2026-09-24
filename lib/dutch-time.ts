@@ -72,6 +72,10 @@ export function normalizeHour(hour: number) {
   return normalized <= 0 ? normalized + 12 : normalized;
 }
 
+export function hourWord(hour: number) {
+  return NUMBER_WORDS[normalizeHour(hour)];
+}
+
 export function formatDutchTime(hour: number, minute: number) {
   const current = normalizeHour(hour);
   const next = normalizeHour(current + 1);
@@ -98,17 +102,6 @@ export function formatDutchTime(hour: number, minute: number) {
 
 export function formatDigitalTime(hour: number, minute: number) {
   return `${String(normalizeHour(hour)).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-export function minuteHint(minute: number) {
-  if (minute === 0) return "De lange wijzer staat op 12. Zeg: ‘uur’.";
-  if (minute === 15) return "De lange wijzer staat op 3. Dat is kwart over.";
-  if (minute === 30) return "De lange wijzer staat op 6. Noem het volgende uur.";
-  if (minute === 45) return "De lange wijzer staat op 9. Dat is kwart voor het volgende uur.";
-  if (minute < 20) return "De lange wijzer is net voorbij 12: zeg ‘over’.";
-  if (minute < 30) return "We gaan richting half: zeg ‘voor half’ en noem het volgende uur.";
-  if (minute < 45) return "We zijn voorbij half: zeg ‘over half’ en noem het volgende uur.";
-  return "De lange wijzer gaat naar 12: zeg ‘voor’ en noem het volgende uur.";
 }
 
 export function normalizeSpokenText(value: string) {
