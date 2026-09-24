@@ -1,4 +1,5 @@
 import { formatDutchTime } from "./dutch-time.ts";
+import { allGameLines } from "./games.ts";
 import { LESSONS } from "./lessons.ts";
 import { allSetClockLines } from "./set-clock-mission.ts";
 import { explainTime } from "./time-explainer.ts";
@@ -39,6 +40,7 @@ export function allNarrationLines() {
     lines.add(lesson.challenge.success);
   }
   allSetClockLines().forEach((line) => lines.add(line));
+  allGameLines().forEach((line) => lines.add(line));
   return [...lines];
 }
 

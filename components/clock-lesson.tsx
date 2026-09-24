@@ -71,7 +71,7 @@ export function ClockLesson({ lesson, open, onOpenChange, speak, onChallengeSolv
             interactive={isChallenge && !solved}
             guide={explanation}
             guideMode={lesson.guideMode}
-            minuteNumbers={lesson.minuteNumbers}
+            ring
             onChange={moveChallengeClock}
           />
 

@@ -1,3 +1,4 @@
+import type { GuideMode } from "./clock-ring.ts";
 import type { LearningLevel } from "./dutch-time.ts";
 
 // Mini-lessons that open the first time a level is chosen. Every line is shown
@@ -16,8 +17,8 @@ export type ClockLesson = {
   level: LearningLevel;
   /** Shown above each screen title and on the replay button. */
   name: string;
-  guideMode: "halves" | "quarters";
-  minuteNumbers: boolean;
+  /** Forces the clock zones; otherwise they follow the time shown. */
+  guideMode?: GuideMode;
   screens: LessonScreen[];
   challenge: {
     title: string;
@@ -34,8 +35,6 @@ const OVER_VOOR: ClockLesson = {
   id: "over-voor",
   level: 4,
   name: "Over en voor",
-  guideMode: "halves",
-  minuteNumbers: true,
   screens: [
     {
       title: "Start en finish",
@@ -52,7 +51,7 @@ const OVER_VOOR: ClockLesson = {
       minute: 5,
       lines: [
         "De lange wijzer is één sprong voorbij de 12.",
-        "Eén sprong is vijf minuten. Kijk maar: bij de 1 staat een blauwe 5.",
+        "Eén sprong is vijf minuten. Kijk maar: naast de 1 staat een groene 5.",
         "Net na de start zeg je: over.",
       ],
     },
@@ -99,7 +98,6 @@ const ROND_HALF: ClockLesson = {
   level: 5,
   name: "Rond half",
   guideMode: "quarters",
-  minuteNumbers: false,
   screens: [
     {
       title: "De halte",

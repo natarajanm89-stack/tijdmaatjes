@@ -14,27 +14,28 @@ Tijdmaatjes is a privacy-friendly Dutch clock-learning web app for children aged
 4. Vijf en tien over / voor
 5. Vijf en tien voor / over half
 
-### Explaining “vijf/tien over” and “vijf/tien voor”
+### Helpers on every clock
 
-The **12 is the start and finish** (a checkered flag): _over_ = the long hand just left the start, _voor_ = it is almost back at the finish, and around _voor_ you name the next hour.
+Every clock can show the same helpers, and they follow **the time on that clock**, not the level, because children can drag the hands anywhere. A **Hulp aan/uit** switch in the top bar hides them once a child is ready.
 
-- From level 4 the clock is split in two halves, **over** (right) and **voor** (left). Level 5 refines this into four quarters.
-- Levels 3–4 show **blue minute numbers** (5, 10 … 55) outside the rim, in the color of the long hand: the 1 means 5 minutes, the 2 means 10.
-- Jumps are labeled in minutes (**5**, **10**), appear one after another, and in Ontdek **Luister** counts along: _vijf… tien… tien over acht_.
-- **Mini-lesson “Over en voor”** opens the first time level 4 is chosen (replay via _Uitleg: over en voor_), ending with a drag challenge.
+- **Words ring** around the rim shows what you _say_ at each number, like Dutch classroom clocks: `5 10 kwart` (over), `10 5` (voor half), `half`, `5 10` (over half), `kwart 10 5` (voor), `uur`. It never shows 20, 25, 45, 50 or 55, because Dutch time never says them.
+- **The 12 is start and finish** (checkered flag): _over_ = the long hand just left the start, _voor_ = it is almost back. Near the 12 the clock is split in two halves, **over** (right) and **voor** (left).
+- **The 6 is the _halte_** (bus stop): around half (:20, :25, :35, :40) the clock switches to four quarters: over · voor half · over half · voor. Around half, and with _voor_, you name the **next** hour (`08:25 = vijf voor half negen`).
+- **Jumps** labeled 5 and 10 run along the rim from the 12 or the halte, one after another; in Ontdek **Luister** counts along: _vijf… tien… tien voor tien_. The hour that is said lights up.
+- Where the helpers would give the answer away (Oefen, Praat, before an answer), only the ring shows; the full helpers appear after a mistake or on _Waarom?_. Ontdek and the lessons always show them.
 
-### Explaining “voor half” and “over half”
+Mini-lessons open the first time their level is chosen, with a replay button in the Kloktruc card: **“Over en voor”** (level 4) and **“Rond half”** (level 5). Each ends with a drag-the-hand challenge. Oefen turns a wrong answer into three spoken steps; Praat has a _Waarom zeg je dit?_ button.
 
-Children learn one picture: **the 6 is the _halte_ (bus stop)**. Each number is one jump of five minutes. Just before the halte you say _voor half_, just after it _over half_, and around half you always name the **next** hour (`08:25 = vijf voor half negen`).
+### Spelen
 
-- **Ontdek** (level 5) colors the clock in four zones (over · voor half · over half · voor), marks the halte, draws numbered jump arcs, and lights up the hour that is said. The phrase is shown as chips in matching colors: blue count = long hand, orange hour = short hand.
-- **Mini-lesson “Rond half”** opens the first time level 5 is chosen (replay via _Uitleg: de halte_): five spoken screens and a drag-the-hand challenge.
-- **Oefen** turns a wrong answer into three spoken steps on a guided clock.
-- **Praat** has a _Waarom zeg je dit?_ button with the same steps.
+The **Spelen** tab holds four games, each based on a common way of teaching the clock:
 
-### Zet de klok
+- **Tel mee rond de klok**: tap 1 → 12; the long hand walks five minutes per tap and the time is spoken, so children hear where _over_ becomes _voor half_ and the hour word changes.
+- **Korte wijzer eerst**: only the short hand is shown. Is it _net na 8 uur_, _ongeveer half 9_ or _bijna 9 uur_? Then the long hand appears.
+- **Zet de klok**: hear a time and set the hands, then tap **Klaar!**. Five clocks from the chosen level; on the first three the short hand is already right. A wrong setting praises the hand that is right and says where the other goes (_zet …_). A clock missed on the first try comes back once at the end. First-try clocks count towards unlocking the next level.
+- **Mijn dag**: set the clock for eight moments of a child's day (🌅 opstaan … 🛏️ naar bed). Earns stars but doesn't unlock levels.
 
-The fourth tab turns it around: the child hears a time and sets the hands, then taps **Klaar!**. A mission is five clocks from the chosen level. On clocks 1–3 the short hand already points at the right hour; on clocks 4–5 both hands start wrong. A wrong setting praises the hand that is right and gives a spoken _zet …_ instruction for the other, with the halte overlay on the clock. A clock missed on the first try comes back once at the end (at most two). Stars: one per clock right on the first try, plus a bonus star per finished mission. The logic lives in `lib/set-clock-mission.ts`.
+Stars: one per answer right on the first try, plus a bonus per finished game. Times a child misses (per minute pattern, e.g. :25) come back more often in Oefen and Zet de klok.
 
 All of it comes from `explainTime()` in `lib/time-explainer.ts`, so every screen explains a time the same way.
 
@@ -102,13 +103,18 @@ components/clock-face.tsx       Accessible draggable SVG clock
 components/tijdmaatjes-app.tsx  Learning, practice, speech, and progress flows
 components/clock-lesson.tsx     Mini-lesson dialog (“Over en voor”, “Rond half”)
 components/time-explanation.tsx Phrase chips and step-by-step explanation
-components/set-clock-exercise.tsx “Zet de klok” tab
+components/games-hub.tsx        “Spelen” tab and its game cards
+components/set-clock-exercise.tsx Zet de klok and Mijn dag
+components/count-around-game.tsx  Tel mee rond de klok
+components/hour-hand-game.tsx     Korte wijzer eerst
 lib/dutch-time.ts               Pure Dutch time-language rules
 lib/time-explainer.ts           Halte model: zones, jumps, chips, and steps per time
 lib/lessons.ts                  Mini-lesson content
 lib/speech-clips.ts             Every spoken text and its clip file name
 lib/set-clock-mission.ts        Missions, answer checks, and “zet …” instructions
 lib/clock-geometry.ts           Pointer angle → hour/minute for dragging hands
+lib/clock-ring.ts               Dutch words ring and when to show halves or quarters
+lib/games.ts                    Game rules, Mijn dag moments, and their spoken lines
 tests/                          Unit tests (`pnpm test`, Node's built-in runner)
 public/favicon.svg              App icon
 ```

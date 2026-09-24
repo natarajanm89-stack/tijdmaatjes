@@ -180,6 +180,27 @@ button { -webkit-tap-highlight-color: transparent; }
   font-weight: 700;
 }
 
+.topbar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+.helper-toggle {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 2px solid #bad8e9;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 88%);
+  color: #557087;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #c9e2ef;
+}
+.helper-toggle svg { width: 18px; }
+.helper-toggle.is-on { border-color: #f0c555; background: #fff8da; color: #7a5a00; }
+.helper-toggle:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
 .scoreboard { display: flex; gap: 8px; }
 
 .scoreboard > span {
@@ -843,14 +864,27 @@ button { -webkit-tap-highlight-color: transparent; }
 .clock-flag-light { fill: #fff; }
 .clock-flag.is-current .clock-flag-badge { fill: #fff3c4; stroke: #b3530c; stroke-width: 3; }
 
-/* Minute numbers belong to the long hand, so they share its blue. */
-.clock-minute-numbers text {
-  fill: var(--blue);
+/* Words ring: what you say at each number, colored like its zone. */
+.clock-ring-label {
   font-size: 15px;
   font-weight: 950;
-  text-anchor: middle;
   dominant-baseline: middle;
 }
+.clock-ring-label--over { fill: var(--zone-over-ink); }
+.clock-ring-label--voor-half { fill: var(--zone-voor-half-ink); }
+.clock-ring-label--over-half { fill: var(--zone-over-half-ink); }
+.clock-ring-label--voor { fill: var(--zone-voor-ink); }
+.clock-ring-label--half, .clock-ring-label--uur { fill: var(--halte); }
+.clock-ring-label.is-current {
+  font-size: 19px;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 4px;
+}
+
+.clock-number-marked { fill: #d8f3ea; stroke: var(--aqua); stroke-width: 3; }
+.clock-number-tap { fill: transparent; cursor: pointer; outline: none; }
+.clock-number-tap:focus-visible { stroke: var(--ring); stroke-width: 3; }
 
 /* ---- Phrase chips: count = long blue hand, hour = short orange hand ---- */
 .phrase-chips { display: inline-flex; flex-wrap: wrap; gap: 0.18em; }
@@ -952,7 +986,6 @@ button { -webkit-tap-highlight-color: transparent; }
 
 /* ---- "Zet de klok" exercise ---- */
 .mode-tabs { width: min(640px, 100%); }
-.tab-label-short { display: none; }
 
 .setclock-layout {
   display: grid;
@@ -1019,6 +1052,72 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .setclock-trophy svg { width: 36px; height: 36px; }
 
+/* ---- Spelen ---- */
+.games-hub { padding: clamp(28px, 5vw, 56px); }
+.games-hub h2 { margin: 2px 0 20px; color: var(--blue-deep); font-size: 1.9rem; font-weight: 950; }
+.games-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+.game-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  row-gap: 3px;
+  align-items: center;
+  padding: 18px;
+  border: 2px solid #cfe2ef;
+  border-radius: 22px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #d7e8f2;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.game-card:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #c3dcea; }
+.game-card:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.game-card strong { font-size: 1.15rem; font-weight: 950; }
+.game-card small { grid-column: 2; color: #557087; font-size: 0.92rem; font-weight: 750; }
+.game-card-icon {
+  display: grid;
+  grid-row: span 2;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 16px;
+}
+.game-card-icon svg { width: 28px; height: 28px; }
+.game-card--tel-mee .game-card-icon { background: var(--zone-over); color: var(--zone-over-ink); }
+.game-card--korte-wijzer .game-card-icon { background: #fff0e3; color: #b3530c; }
+.game-card--zet-de-klok .game-card-icon { background: var(--zone-over-half); color: var(--zone-over-half-ink); }
+.game-card--mijn-dag .game-card-icon { background: var(--zone-voor); color: var(--zone-voor-ink); }
+
+.game-frame { position: relative; }
+.game-back { position: absolute; z-index: 2; top: 14px; left: 14px; border-radius: 12px; font-weight: 900; }
+.game-frame .card-kicker { margin-top: 26px; }
+
+.myday-moment {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #fff7ec;
+}
+.myday-moment > span { font-size: 2.4rem; line-height: 1; }
+.myday-moment strong { font-size: 1.15rem; font-weight: 950; }
+.myday-moment p { margin: 2px 0 0; color: #6b5537; font-weight: 750; }
+
+.count-progress { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 16px; }
+.count-progress span { width: 20px; height: 8px; border-radius: 99px; background: #d9e7f0; }
+.count-progress .is-done { background: var(--aqua); }
+
+.hourhand-choices { margin-top: 10px; }
+.feedback-box p .phrase-chips { font-size: 1.1rem; }
+
 @media (max-width: 980px) {
   .mission-panel { grid-template-columns: 1fr; gap: 14px; }
 
@@ -1050,8 +1149,9 @@ button { -webkit-tap-highlight-color: transparent; }
   .brand-mark { width: 46px; height: 46px; }
   .scoreboard > span { min-height: 40px; }
   .mode-tabs button { padding-inline: 6px; font-size: 0.84rem; }
-  .tab-label-long { display: none; }
-  .tab-label-short { display: inline; }
+  .helper-toggle { padding-inline: 11px; }
+  .games-grid { grid-template-columns: 1fr; }
+  .game-frame { padding-top: 12px; }
   .setclock-clock, .setclock-task { padding: 28px 18px; }
   .workspace-card { border-radius: 24px; }
 

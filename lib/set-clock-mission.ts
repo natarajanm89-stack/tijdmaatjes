@@ -1,4 +1,5 @@
 import { hourWord, normalizeHour } from "./dutch-time.ts";
+import type { DayMoment } from "./games.ts";
 import { pickMinute, type SavedProgress } from "./progress.ts";
 import type { ExplanationStep } from "./time-explainer.ts";
 
@@ -15,6 +16,8 @@ export type MissionClock = {
   presetHour: boolean;
   /** A clock missed on the first try, asked once more at the end. */
   retry: boolean;
+  /** "Mijn dag": the moment of the day this clock belongs to. */
+  moment?: DayMoment;
 };
 
 export type MissionState = {
@@ -108,7 +111,11 @@ export function createMission(
     seen.add(key);
     targets.push(target);
   }
+  return buildClocks(targets, random);
+}
 
+/** Start positions: clocks 1–3 start on the right hour, later ones start wrong on both hands. */
+function buildClocks(targets: ClockTime[], random: () => number): MissionClock[] {
   return targets.map((target, index) => {
     const presetHour = index < PRESET_CLOCKS;
     let start: ClockTime;
@@ -125,12 +132,22 @@ export function createMission(
   });
 }
 
+/** "Mijn dag": the day's moments in order, with the same start positions as a mission. */
+export function createMyDayMission(moments: DayMoment[], random: () => number = Math.random): MissionClock[] {
+  return buildClocks(moments.map((moment) => moment.time), random)
+    .map((clock, index) => ({ ...clock, moment: moments[index] }));
+}
+
+export function startQueue(queue: MissionClock[]): MissionState {
+  return { queue, index: 0, attempts: 0, firstTry: 0, finished: false };
+}
+
 export function startMission(
   minutes: number[],
   random: () => number = Math.random,
   trickyMinutes: SavedProgress["trickyMinutes"] = {},
 ): MissionState {
-  return { queue: createMission(minutes, random, trickyMinutes), index: 0, attempts: 0, firstTry: 0, finished: false };
+  return startQueue(createMission(minutes, random, trickyMinutes));
 }
 
 export function checkClock(target: ClockTime, set: ClockTime) {

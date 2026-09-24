@@ -3,6 +3,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { hourFromAngle, minuteFromAngle } from "@/lib/clock-geometry";
 import { formatDutchTime, normalizeHour } from "@/lib/dutch-time";
+import { guideModeFor, RING, type GuideMode } from "@/lib/clock-ring";
 import type { ClockZone, TimeExplanation } from "@/lib/time-explainer";
 
 type ClockFaceProps = {
@@ -12,14 +13,17 @@ type ClockFaceProps = {
   compact?: boolean;
   /** Shows the teaching overlay: zones, the 12 as start/finish, the 6 as halte, and jump arcs. */
   guide?: TimeExplanation | null;
-  /** "halves" (over / voor) for levels up to 4, "quarters" once "rond half" is taught. */
+  /** Overrides the zones; by default they follow the time (see guideModeFor). */
   guideMode?: GuideMode;
-  /** Blue 5, 10 … 55 around the rim: the minutes the long (blue) hand points at. */
-  minuteNumbers?: boolean;
+  /** The Dutch words ring (5, 10, kwart, half, uur) around the rim. */
+  ring?: boolean;
+  /** "Korte wijzer eerst": show only the hour hand. */
+  hideMinuteHand?: boolean;
+  /** Makes the hour numbers tappable, e.g. for counting around the clock. */
+  onNumberTap?: (number: number) => void;
+  markedNumbers?: number[];
   onChange?: (hour: number, minute: number) => void;
 };
-
-export type GuideMode = "halves" | "quarters";
 
 type Hand = "hour" | "minute";
 
@@ -45,8 +49,8 @@ function currentZone(zone: ClockZone | null, mode: GuideMode) {
   return zone === "voor-half" ? "over" : zone === "over-half" ? "voor" : zone;
 }
 
-/** Extra room around the face for the minute-number ring. */
-const MINUTE_RING_PAD = 26;
+/** Extra room around the face for the words ring. */
+const RING_PAD = 44;
 
 /** Point on the face for a minute mark; rounded so server and browser SVG match. */
 function markPoint(minuteMark: number, radius: number) {
@@ -134,11 +138,14 @@ export function ClockFace({
   interactive = false,
   compact = false,
   guide = null,
-  guideMode = "quarters",
-  minuteNumbers = false,
+  guideMode,
+  ring = false,
+  hideMinuteHand = false,
+  onNumberTap,
+  markedNumbers = [],
   onChange,
 }: ClockFaceProps) {
-  const pad = minuteNumbers ? MINUTE_RING_PAD : 0;
+  const pad = ring ? RING_PAD : 0;
   const size = 320 + pad * 2;
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<Hand | null>(null);
@@ -196,13 +203,25 @@ export function ClockFace({
       >
         <circle cx="160" cy="160" r="149" className="clock-rim" />
         <circle cx="160" cy="160" r="137" className="clock-face" />
-        {guide && <ClockGuide guide={guide} mode={guideMode} />}
-        {minuteNumbers && (
-          <g className="clock-minute-numbers" aria-hidden="true">
-            {Array.from({ length: 11 }, (_, index) => {
-              const minuteMark = (index + 1) * 5;
-              const point = markPoint(minuteMark, 165);
-              return <text key={minuteMark} x={point.x} y={point.y}>{minuteMark}</text>;
+        {guide && <ClockGuide guide={guide} mode={guideMode ?? guideModeFor(guide)} />}
+        {ring && (
+          <g className="clock-ring" aria-hidden="true">
+            {RING.map((label) => {
+              // "kwart" at the 3 and 9 is wide: anchor it outward so it clears the rim.
+              const side = label.minute === 15 ? "start" : label.minute === 45 ? "end" : "middle";
+              const point = markPoint(label.minute, side === "middle" ? 168 : 158);
+              const current = !hideMinuteHand && label.minute === minute;
+              return (
+                <text
+                  key={label.number}
+                  x={point.x}
+                  y={point.y}
+                  textAnchor={side}
+                  className={`clock-ring-label clock-ring-label--${label.zone} ${current ? "is-current" : ""}`}
+                >
+                  {label.text}
+                </text>
+              );
             })}
           </g>
         )}
@@ -230,12 +249,31 @@ export function ClockFace({
           const x = Number((160 + Math.cos(angle) * 105).toFixed(4));
           const y = Number((160 + Math.sin(angle) * 105).toFixed(4));
           const named = guide && normalizeHour(guide.namedHour) === number;
+          const marked = markedNumbers.includes(number);
           return (
             <g key={number}>
               {named && <circle cx={x} cy={y} r="18" className="clock-number-glow" />}
+              {marked && <circle cx={x} cy={y} r="18" className="clock-number-marked" />}
               <text x={x} y={y} className="clock-number">
                 {number}
               </text>
+              {onNumberTap && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="20"
+                  className="clock-number-tap"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`De ${number}`}
+                  onClick={() => onNumberTap(number)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    onNumberTap(number);
+                  }}
+                />
+              )}
             </g>
           );
         })}
@@ -260,7 +298,7 @@ export function ClockFace({
           <circle cx="160" cy="91" r="8" className="clock-handle clock-handle--hour" />
         </g>
 
-        <g
+        {!hideMinuteHand && <g
           className={interactive ? "clock-hand-group clock-hand-group--interactive" : "clock-hand-group"}
           transform={`rotate(${minuteAngle} 160 160)`}
           onPointerDown={(event) => startDrag("minute", event)}
@@ -278,7 +316,7 @@ export function ClockFace({
           <line x1="160" y1="176" x2="160" y2="56" className="clock-hand clock-hand--minute" />
           {interactive && <line x1="160" y1="184" x2="160" y2="47" className="clock-hand-hit" />}
           <circle cx="160" cy="56" r="8" className="clock-handle clock-handle--minute" />
-        </g>
+        </g>}
 
         <circle cx="160" cy="160" r="11" className="clock-pin-outer" />
         <circle cx="160" cy="160" r="4" className="clock-pin-inner" />

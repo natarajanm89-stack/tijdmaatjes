@@ -14,6 +14,8 @@ export type SavedProgress = {
    * weight of 1–3. A miss raises it, a first-try hit lowers it, 0 removes it.
    */
   trickyMinutes: Partial<Record<number, number>>;
+  /** Words ring and zones on the clocks; children can switch them off when ready. */
+  showHelpers: boolean;
 };
 
 export const DEFAULT_PROGRESS: SavedProgress = {
@@ -24,6 +26,7 @@ export const DEFAULT_PROGRESS: SavedProgress = {
   levelWins: {},
   seenLessons: {},
   trickyMinutes: {},
+  showHelpers: true,
 };
 
 /** Fills in defaults for progress saved by older versions of the app. */
@@ -47,6 +50,8 @@ export type AnswerResult = {
   firstTry: boolean;
   /** Earns a star and a level win (false for retried clocks). */
   rewarded: boolean;
+  /** Counts towards unlocking the next level (default true; false for free play like "Mijn dag"). */
+  levelWin?: boolean;
 };
 
 export function applyAnswer(progress: SavedProgress, result: AnswerResult): SavedProgress {
@@ -63,6 +68,9 @@ export function applyAnswer(progress: SavedProgress, result: AnswerResult): Save
     else delete tricky[result.minute];
   }
   if (!result.rewarded) return { ...progress, trickyMinutes: tricky };
+  if (result.levelWin === false) {
+    return { ...progress, stars: progress.stars + 1, streak: progress.streak + 1, trickyMinutes: tricky };
+  }
 
   const wins = (progress.levelWins[result.level] ?? 0) + 1;
   const unlockedLevel = wins >= WINS_TO_UNLOCK && result.level < 5

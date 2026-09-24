@@ -40,7 +40,8 @@ test("every step is short enough for the TTS route and has a clip", () => {
   }
   const texts = allSpokenTexts();
   assert.equal(new Set(texts.map(speechClipPath)).size, texts.length, "clip file names must be unique");
-  assert.ok(texts.length - allTimePhrases().length < 100, "narration stays a small, fixed set");
+  // Guards against narration multiplying per hour and minute (144 × lines).
+  assert.ok(texts.length - allTimePhrases().length < 150, "narration stays a small, fixed set");
 });
 
 function pick({ zone, anchor, jumps, namedHour }: ReturnType<typeof explainTime>) {

@@ -14,13 +14,13 @@ import {
   RotateCcw,
   Sparkles,
   Star,
-  Target,
+  Gamepad2,
   Volume2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ClockFace } from "@/components/clock-face";
 import { ClockLesson, lessonScreenSpeech } from "@/components/clock-lesson";
-import { SetClockExercise } from "@/components/set-clock-exercise";
+import { GamesHub } from "@/components/games-hub";
 import { ExplanationSteps, PhraseChips, stepsToSpeech } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -39,7 +39,7 @@ import { applyAnswer, DEFAULT_PROGRESS, normalizeProgress, pickMinute, type Save
 import { speechClipPath } from "@/lib/speech-clips";
 import { explainTime } from "@/lib/time-explainer";
 
-type AppTab = "discover" | "practice" | "setclock" | "speak";
+type AppTab = "discover" | "practice" | "play" | "speak";
 type AnswerState = "idle" | "wrong" | "correct";
 type AudioState = "idle" | "loading" | "playing";
 
@@ -230,12 +230,8 @@ export function TijdmaatjesApp() {
   const phrase = formatDutchTime(hour, minute);
   const speakPhrase = formatDutchTime(speakTime.hour, speakTime.minute);
   const explanation = useMemo(() => explainTime(hour, minute), [hour, minute]);
-  // Clock helpers grow with the level: halves (over/voor) and blue minute numbers
-  // while learning five-minute steps, then quarters around half.
-  const clockHelp = {
-    guideMode: level <= 4 ? "halves" : "quarters",
-    minuteNumbers: level === 3 || level === 4,
-  } as const;
+  // Helpers follow the time on each clock (see guideModeFor) and can be switched off.
+  const helpers = progress.showHelpers;
   const levelLesson = lessonForLevel(level);
   const questionExplanation = useMemo(() => explainTime(question.hour, question.minute), [question]);
   const speakExplanation = useMemo(() => explainTime(speakTime.hour, speakTime.minute), [speakTime]);
@@ -365,7 +361,7 @@ export function TijdmaatjesApp() {
 
   // With jumps on the clock, count along before the phrase: "vijf… tien… tien over acht".
   function listen() {
-    const counting = level >= 4 ? ["vijf", "tien"].slice(0, explanation.jumps) : [];
+    const counting = helpers ? ["vijf", "tien"].slice(0, explanation.jumps) : [];
     speak([...counting, phrase]);
   }
 
@@ -541,9 +537,20 @@ export function TijdmaatjesApp() {
             <small>Nederlands leren met de klok</small>
           </span>
         </div>
-        <div className="scoreboard" aria-label={`${progress.stars} sterren, reeks ${progress.streak}`}>
-          <span><Star aria-hidden="true" fill="currentColor" /> {progress.stars}</span>
-          <span className="streak"><Sparkles aria-hidden="true" /> Reeks {progress.streak}</span>
+        <div className="topbar-actions">
+          <button
+            type="button"
+            className={`helper-toggle ${helpers ? "is-on" : ""}`}
+            aria-pressed={helpers}
+            onClick={() => setProgress((current) => ({ ...current, showHelpers: !current.showHelpers }))}
+            title={helpers ? "Hulp op de klok staat aan" : "Hulp op de klok staat uit"}
+          >
+            <Lightbulb aria-hidden="true" /> Hulp {helpers ? "aan" : "uit"}
+          </button>
+          <div className="scoreboard" aria-label={`${progress.stars} sterren, reeks ${progress.streak}`}>
+            <span><Star aria-hidden="true" fill="currentColor" /> {progress.stars}</span>
+            <span className="streak"><Sparkles aria-hidden="true" /> Reeks {progress.streak}</span>
+          </div>
         </div>
       </header>
 
@@ -580,9 +587,7 @@ export function TijdmaatjesApp() {
         <TabsList className="mode-tabs" aria-label="Kies een speelstand">
           <TabsTrigger value="discover"><Hand aria-hidden="true" /> Ontdek</TabsTrigger>
           <TabsTrigger value="practice"><Sparkles aria-hidden="true" /> Oefen</TabsTrigger>
-          <TabsTrigger value="setclock" aria-label="Zet de klok">
-            <Target aria-hidden="true" /> <span className="tab-label-long">Zet de klok</span><span className="tab-label-short" aria-hidden="true">Zet</span>
-          </TabsTrigger>
+          <TabsTrigger value="play"><Gamepad2 aria-hidden="true" /> Spelen</TabsTrigger>
           <TabsTrigger value="speak"><Mic aria-hidden="true" /> Praat</TabsTrigger>
         </TabsList>
 
@@ -593,8 +598,8 @@ export function TijdmaatjesApp() {
               hour={hour}
               minute={minute}
               interactive
-              guide={level >= 4 ? explanation : null}
-              {...clockHelp}
+              guide={helpers ? explanation : null}
+              ring={helpers}
               onChange={(nextHour, nextMinute) => {
                 setHour(nextHour);
                 setMinute(nextMinute);
@@ -667,7 +672,7 @@ export function TijdmaatjesApp() {
               minute={question.minute}
               compact
               guide={answerState === "wrong" ? questionExplanation : null}
-              {...clockHelp}
+              ring={helpers}
             />
             <Button variant="outline" className="hear-question" onClick={() => speak(question.correct)}>
               <Ear aria-hidden="true" /> Hoor de tijd
@@ -722,15 +727,14 @@ export function TijdmaatjesApp() {
           </section>
         </TabsContent>
 
-        <TabsContent value="setclock" className="workspace-card">
-          <SetClockExercise
-            key={level}
+        <TabsContent value="play" className="workspace-card">
+          <GamesHub
             step={currentStep}
             speak={speak}
             trickyMinutes={progress.trickyMinutes}
-            clockHelp={clockHelp}
+            showHelpers={helpers}
             onAnswer={(result) => setProgress((current) => applyAnswer(current, { ...result, level }))}
-            onMissionDone={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
+            onStar={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
           />
         </TabsContent>
 
@@ -742,7 +746,7 @@ export function TijdmaatjesApp() {
               minute={speakTime.minute}
               compact
               guide={showSpeakWhy ? speakExplanation : null}
-              {...clockHelp}
+              ring={helpers}
             />
             <Button variant="outline" onClick={nextSpeakPrompt}>Andere klok <RotateCcw aria-hidden="true" /></Button>
           </section>
