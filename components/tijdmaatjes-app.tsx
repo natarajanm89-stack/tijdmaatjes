@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { ClockFace } from "@/components/clock-face";
 import { ClockLesson, lessonScreenSpeech } from "@/components/clock-lesson";
 import { GamesHub } from "@/components/games-hub";
+import { LiveClock } from "@/components/live-clock";
 import { ExplanationSteps, PhraseChips, stepsToSpeech } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -572,6 +573,7 @@ export function TijdmaatjesApp() {
             <strong>Tijdmaatjes</strong>
             <small>Nederlands leren met de klok</small>
           </span>
+          <LiveClock />
         </div>
         <div className="topbar-actions">
           <button

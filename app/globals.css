@@ -180,6 +180,37 @@ button { -webkit-tap-highlight-color: transparent; }
   font-weight: 700;
 }
 
+/* ---- Live clock next to the logo: current time in the Netherlands ---- */
+.live-clock { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; margin-left: 4px; }
+.live-clock svg { display: block; width: 48px; height: 48px; filter: drop-shadow(0 3px 0 #b5d8ec); }
+.live-clock-face { fill: #fffdf8; stroke: var(--blue-deep); stroke-width: 2.5; }
+.live-clock-tick { stroke: #91a8b8; stroke-width: 1; stroke-linecap: round; }
+.live-clock-tick--major { stroke: var(--blue-deep); stroke-width: 1.6; }
+.live-clock-hand { stroke-linecap: round; }
+.live-clock-hand--hour { stroke: var(--orange); stroke-width: 3; }
+.live-clock-hand--minute { stroke: var(--blue); stroke-width: 2.2; }
+.live-clock-hand--second { stroke: #d74848; stroke-width: 1; }
+.live-clock-pin { fill: var(--yellow); stroke: var(--blue-deep); stroke-width: 1.2; }
+.live-clock-caption { color: #547187; font-size: 0.66rem; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.live-clock-spin {
+  transform-box: view-box;
+  transform-origin: 20px 20px;
+  animation-name: live-clock-turn;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+/* The second hand ticks once per second, like a real clock. */
+.live-clock-spin--second { animation-timing-function: steps(60, end); }
+@keyframes live-clock-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Hands still show the time (updated each minute); no moving second hand. */
+  .live-clock-spin--second { display: none; }
+}
+
 .topbar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 
 .helper-toggle {
@@ -1145,7 +1176,8 @@ button { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 640px) {
   .app-shell { padding: 15px 12px 24px; }
   .topbar { align-items: flex-start; margin-bottom: 20px; }
-  .brand small, .scoreboard .streak { display: none; }
+  .brand small, .scoreboard .streak, .live-clock-caption { display: none; }
+  .live-clock svg { width: 40px; height: 40px; }
   .brand-mark { width: 46px; height: 46px; }
   .scoreboard > span { min-height: 40px; }
   .mode-tabs button { padding-inline: 6px; font-size: 0.84rem; }
