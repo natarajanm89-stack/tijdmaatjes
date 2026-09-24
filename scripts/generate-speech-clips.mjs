@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { requestElevenLabsSpeech } from "../lib/elevenlabs.ts";
 import { allSpokenTexts, speechClipPath } from "../lib/speech-clips.ts";
+import { allTamilParts, tamilClipPath } from "../lib/tamil.ts";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 for (const file of [".env.local", ".env"]) {
@@ -18,28 +19,37 @@ for (const file of [".env.local", ".env"]) {
   }
 }
 
-const { ELEVENLABS_API_KEY: apiKey, ELEVENLABS_VOICE_ID: voiceId } = process.env;
+const { ELEVENLABS_API_KEY: apiKey, ELEVENLABS_VOICE_ID: voiceId, ELEVENLABS_VOICE_ID_TA: tamilVoiceId } = process.env;
 if (!apiKey || !voiceId) {
   console.error("Set ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID in .env or .env.local first.");
   process.exit(1);
 }
 
-mkdirSync(`${projectRoot}public/audio`, { recursive: true });
-let generated = 0;
-let skipped = 0;
-for (const phrase of allSpokenTexts()) {
-  const target = `${projectRoot}public${speechClipPath(phrase)}`;
-  if (existsSync(target)) {
-    skipped += 1;
-    continue;
+async function generate(texts, pathFor, voice, languageCode) {
+  let generated = 0;
+  let skipped = 0;
+  for (const text of texts) {
+    const target = `${projectRoot}public${pathFor(text)}`;
+    if (existsSync(target)) {
+      skipped += 1;
+      continue;
+    }
+    const response = await requestElevenLabsSpeech(apiKey, voice, text, languageCode);
+    if (!response.ok) {
+      console.error(`ElevenLabs failed for "${text}": ${response.status} ${await response.text()}`);
+      process.exit(1);
+    }
+    writeFileSync(target, Buffer.from(await response.arrayBuffer()));
+    generated += 1;
+    console.log(`✓ ${text}`);
   }
-  const response = await requestElevenLabsSpeech(apiKey, voiceId, phrase);
-  if (!response.ok) {
-    console.error(`ElevenLabs failed for "${phrase}": ${response.status} ${await response.text()}`);
-    process.exit(1);
-  }
-  writeFileSync(target, Buffer.from(await response.arrayBuffer()));
-  generated += 1;
-  console.log(`✓ ${phrase}`);
+  console.log(`[${languageCode}] Generated ${generated} clip(s), kept ${skipped} existing.`);
 }
-console.log(`Generated ${generated} clip(s), kept ${skipped} existing.`);
+
+mkdirSync(`${projectRoot}public/audio/ta`, { recursive: true });
+await generate(allSpokenTexts(), speechClipPath, voiceId, "nl");
+if (tamilVoiceId) {
+  await generate(allTamilParts().tamil, tamilClipPath, tamilVoiceId, "ta");
+} else {
+  console.log("[ta] Skipped: set ELEVENLABS_VOICE_ID_TA to generate the Tamil explanations.");
+}

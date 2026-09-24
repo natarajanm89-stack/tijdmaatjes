@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Hand,
+  Languages,
   Lightbulb,
   LockKeyhole,
   Mic,
@@ -37,6 +38,7 @@ import {
 import { lessonForLevel, type ClockLesson as Lesson } from "@/lib/lessons";
 import { applyAnswer, DEFAULT_PROGRESS, normalizeProgress, pickMinute, type SavedProgress } from "@/lib/progress";
 import { speechClipPath } from "@/lib/speech-clips";
+import { speechParts, tamilClipPath } from "@/lib/tamil";
 import { explainTime } from "@/lib/time-explainer";
 
 type AppTab = "discover" | "practice" | "play" | "speak";
@@ -257,6 +259,24 @@ export function TijdmaatjesApp() {
     return clip;
   }, []);
 
+  /** Pre-generated Tamil explanation part; throws when it hasn't been generated. */
+  const loadTamilClip = useCallback(async (context: AudioContext, text: string) => {
+    const key = `ta:${text}`;
+    let clip = audioCache.current.get(key);
+    if (!clip) {
+      const response = await fetch(tamilClipPath(text));
+      if (!response.ok || !response.headers.get("content-type")?.startsWith("audio/")) {
+        throw new Error("Tamil clip missing");
+      }
+      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      clip = { buffer, gain: normalizingGain(buffer) };
+      audioCache.current.set(key, clip);
+    }
+    return clip;
+  }, []);
+
+  const explainLanguage = progress.explainLanguage;
+
   /** Stops whatever is playing; any running `speak` sequence ends at its next step. */
   const stopSpeech = useCallback(() => {
     playbackRef.current += 1;
@@ -269,7 +289,10 @@ export function TijdmaatjesApp() {
     setAudioState("idle");
   }, []);
 
-  /** Speaks one text, or several in order with a short pause between them. */
+  /**
+   * Speaks one text, or several in order with a short pause between them. With
+   * Tamil explanations on, each line plays as its Tamil and Dutch parts.
+   */
   const speak = useCallback(async (input: string | string[]) => {
     if (typeof window === "undefined") return;
     const texts = Array.isArray(input) ? input : [input];
@@ -282,12 +305,25 @@ export function TijdmaatjesApp() {
       audioContextRef.current ??= new AudioContext();
       const context = audioContextRef.current;
       const resumed = context.resume();
-      const clips = await Promise.all(texts.map((text) => loadClip(context, text)));
+      const lines = await Promise.all(texts.map(async (text) => {
+        const parts = speechParts(text, explainLanguage);
+        if (parts.length === 1 && typeof parts[0] !== "string") return [await loadClip(context, parts[0].nl)];
+        try {
+          return await Promise.all(parts.map((part) => (
+            typeof part === "string" ? loadTamilClip(context, part) : loadClip(context, part.nl)
+          )));
+        } catch {
+          // Tamil clips not generated yet: this line stays Dutch.
+          return [await loadClip(context, text)];
+        }
+      }));
+      // Shorter pauses between the parts of one line than between lines.
+      const clips = lines.flatMap((line) => line.map((clip, part) => ({ ...clip, pause: part === 0 ? 350 : 180 })));
       await resumed;
 
       for (const [index, clip] of clips.entries()) {
         if (playback !== playbackRef.current) return;
-        if (index > 0) await new Promise((resolve) => setTimeout(resolve, 350));
+        if (index > 0) await new Promise((resolve) => setTimeout(resolve, clip.pause));
         if (playback !== playbackRef.current) return;
         setAudioState("playing");
         await new Promise<void>((resolve) => {
@@ -321,7 +357,7 @@ export function TijdmaatjesApp() {
         window.speechSynthesis.speak(utterance);
       });
     }
-  }, [loadClip, stopSpeech]);
+  }, [explainLanguage, loadClip, loadTamilClip, stopSpeech]);
 
   const chooseLevel = useCallback((nextLevel: LearningLevel) => {
     const sample = LEARNING_STEPS[nextLevel - 1].sample;
@@ -538,6 +574,19 @@ export function TijdmaatjesApp() {
           </span>
         </div>
         <div className="topbar-actions">
+          <button
+            type="button"
+            className={`helper-toggle ${explainLanguage === "ta" ? "is-on" : ""}`}
+            aria-pressed={explainLanguage === "ta"}
+            aria-label={explainLanguage === "ta" ? "Uitleg in het Tamil (aan)" : "Uitleg in het Tamil (uit)"}
+            onClick={() => setProgress((current) => ({
+              ...current,
+              explainLanguage: current.explainLanguage === "ta" ? "nl" : "ta",
+            }))}
+            title="Uitleg in het Nederlands of in het Tamil. Tijden blijven Nederlands."
+          >
+            <Languages aria-hidden="true" /> Uitleg: <span lang={explainLanguage === "ta" ? "ta" : "nl"}>{explainLanguage === "ta" ? "தமிழ்" : "NL"}</span>
+          </button>
           <button
             type="button"
             className={`helper-toggle ${helpers ? "is-on" : ""}`}

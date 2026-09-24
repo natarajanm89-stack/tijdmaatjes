@@ -1,6 +1,6 @@
 // Shared by the /api/tts route and scripts/generate-speech-clips.mjs so that
 // pre-generated clips and on-demand clips sound identical.
-export function requestElevenLabsSpeech(apiKey: string, voiceId: string, text: string) {
+export function requestElevenLabsSpeech(apiKey: string, voiceId: string, text: string, languageCode = "nl") {
   return fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
@@ -13,7 +13,7 @@ export function requestElevenLabsSpeech(apiKey: string, voiceId: string, text: s
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v2",
-        language_code: "nl",
+        language_code: languageCode,
         voice_settings: {
           stability: 0.62,
           similarity_boost: 0.78,

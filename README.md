@@ -88,6 +88,16 @@ ELEVENLABS_VOICE_ID=...
 
 The key stays server-side. `/api/tts` uses ElevenLabs' multilingual model and the client automatically falls back to the browser voice if the service is not configured or temporarily unavailable.
 
+### Tamil explanations
+
+The **Uitleg: NL / தமிழ்** switch in the top bar speaks all explanations and instructions in Tamil (hints, lessons, game instructions, feedback). The screen stays Dutch, and the Dutch words being learned (_vijf voor half negen_, _over_, _halte_ …) are still spoken by the Dutch voice inside the Tamil explanation. Translations live in `lib/tamil.ts`; a line without Tamil clips falls back to Dutch.
+
+To generate the Tamil clips, add a Tamil voice to `.env` and run the generator:
+
+```text
+ELEVENLABS_VOICE_ID_TA=...
+```
+
 All 144 clock phrases (12 hours × 5-minute steps) plus the explanation and mini-lesson lines are pre-generated into `public/audio/` and served as static files, so the app normally never calls ElevenLabs at runtime. The client plays `public/audio/<phrase>.mp3` first, then `/api/tts`, then the browser voice. After changing the voice or its settings in `lib/elevenlabs.ts`, delete `public/audio/` and regenerate:
 
 ```bash
@@ -115,6 +125,7 @@ lib/set-clock-mission.ts        Missions, answer checks, and “zet …” instr
 lib/clock-geometry.ts           Pointer angle → hour/minute for dragging hands
 lib/clock-ring.ts               Dutch words ring and when to show halves or quarters
 lib/games.ts                    Game rules, Mijn dag moments, and their spoken lines
+lib/tamil.ts                    Tamil versions of every explanation line
 tests/                          Unit tests (`pnpm test`, Node's built-in runner)
 public/favicon.svg              App icon
 ```

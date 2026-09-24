@@ -1,5 +1,6 @@
 import type { LearningLevel } from "./dutch-time.ts";
 import type { LessonId } from "./lessons.ts";
+import type { ExplainLanguage } from "./tamil.ts";
 
 // What a child has achieved, kept only in this browser's localStorage.
 export type SavedProgress = {
@@ -16,6 +17,8 @@ export type SavedProgress = {
   trickyMinutes: Partial<Record<number, number>>;
   /** Words ring and zones on the clocks; children can switch them off when ready. */
   showHelpers: boolean;
+  /** Language of the spoken explanations; time phrases are always Dutch. */
+  explainLanguage: ExplainLanguage;
 };
 
 export const DEFAULT_PROGRESS: SavedProgress = {
@@ -27,6 +30,7 @@ export const DEFAULT_PROGRESS: SavedProgress = {
   seenLessons: {},
   trickyMinutes: {},
   showHelpers: true,
+  explainLanguage: "nl",
 };
 
 /** Fills in defaults for progress saved by older versions of the app. */

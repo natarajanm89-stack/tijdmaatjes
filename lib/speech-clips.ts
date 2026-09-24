@@ -1,6 +1,7 @@
 import { formatDutchTime } from "./dutch-time.ts";
 import { allGameLines } from "./games.ts";
 import { LESSONS } from "./lessons.ts";
+import { allTamilParts } from "./tamil.ts";
 import { allSetClockLines } from "./set-clock-mission.ts";
 import { explainTime } from "./time-explainer.ts";
 
@@ -44,6 +45,7 @@ export function allNarrationLines() {
   return [...lines];
 }
 
+/** Every Dutch clip: time phrases, narration, and the Dutch words inside Tamil explanations. */
 export function allSpokenTexts() {
-  return [...new Set([...allTimePhrases(), ...allNarrationLines()])];
+  return [...new Set([...allTimePhrases(), ...allNarrationLines(), ...allTamilParts().dutch])];
 }
