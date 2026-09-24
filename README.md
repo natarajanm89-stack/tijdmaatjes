@@ -33,7 +33,7 @@ Progress and stars are stored only in the current browser. There are no accounts
 
 ## Run locally
 
-Requirements: Node.js 22.13 or newer and pnpm 11.25.0 (pinned in `package.json`).
+Requirements: Node.js 22.18 or newer (tests and speech scripts run TypeScript directly) and pnpm 11.25.0 (pinned in `package.json`).
 
 Node.js 25+ no longer bundles Corepack, so pick whichever way of getting pnpm works for your Node version:
 
@@ -57,7 +57,7 @@ The dev server runs at <http://localhost:5173>. If that port is already taken, p
 pnpm dev --port 5174
 ```
 
-The pnpm store is kept inside the project at `.sites-runtime/pnpm-store` (ignored by Git). The first install takes about 40 seconds.
+The first install takes about 40 seconds. Run the unit tests with `pnpm test`.
 
 Create a production build with:
 
@@ -82,6 +82,7 @@ All 144 clock phrases (12 hours × 5-minute steps) plus the explanation and mini
 
 ```bash
 pnpm speech:generate   # skips clips that already exist
+pnpm speech:check      # transcribes every clip and lists ones that don't match their text
 ```
 
 ## Structure

@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- Node.js 22.13 or newer
+- Node.js 22.18 or newer
 - pnpm 11.25.0 — via Corepack on Node 22–24, or `npx pnpm@11.25.0 …` on Node 25+ (see the README)
-- A Cloudflare account when deploying outside ChatGPT Sites
+- A Cloudflare account
 
 ## Local verification
 
