@@ -34,6 +34,7 @@ import {
   pronunciationScore,
   type LearningLevel,
 } from "@/lib/dutch-time";
+import { applyAnswer, DEFAULT_PROGRESS, pickMinute, type SavedProgress } from "@/lib/progress";
 import { speechClipPath } from "@/lib/speech-clips";
 import { explainTime } from "@/lib/time-explainer";
 
@@ -65,13 +66,6 @@ type Question = {
   choices: string[];
 };
 
-type SavedProgress = {
-  stars: number;
-  streak: number;
-  unlockedLevel: LearningLevel;
-  levelWins: Partial<Record<LearningLevel, number>>;
-  seenRondHalfLesson: boolean;
-};
 
 type RecognitionResultEvent = {
   results: { [key: number]: { [key: number]: { transcript: string } } };
@@ -107,14 +101,6 @@ type ModelContextDocument = Document & {
   };
 };
 
-const DEFAULT_PROGRESS: SavedProgress = {
-  stars: 0,
-  streak: 0,
-  // The supplied worksheet starts at kwartieren; keep earlier skills open for review.
-  unlockedLevel: 3,
-  levelWins: {},
-  seenRondHalfLesson: false,
-};
 
 const STORAGE_KEY = "tijdmaatjes-progress-v1";
 
@@ -162,10 +148,10 @@ function shuffle<T>(items: T[]) {
   return result;
 }
 
-function createQuestion(level: LearningLevel): Question {
+function createQuestion(level: LearningLevel, trickyMinutes: SavedProgress["trickyMinutes"] = {}): Question {
   const minutes = LEARNING_STEPS[level - 1].minutes;
   const hour = Math.floor(Math.random() * 12) + 1;
-  const minute = minutes[Math.floor(Math.random() * minutes.length)];
+  const minute = pickMinute(minutes, trickyMinutes);
   const correct = formatDutchTime(hour, minute);
   const distractors = new Set<string>();
   const minuteIndex = minutes.indexOf(minute);
@@ -337,7 +323,7 @@ export function TijdmaatjesApp() {
     setLevel(nextLevel);
     setHour(sample.hour);
     setMinute(sample.minute);
-    setQuestion(createQuestion(nextLevel));
+    setQuestion(createQuestion(nextLevel, readProgress().trickyMinutes));
     setSelectedAnswer(null);
     setAnswerState("idle");
   }, []);
@@ -377,32 +363,29 @@ export function TijdmaatjesApp() {
   function answer(choice: string) {
     if (answerState === "correct") return;
     setSelectedAnswer(choice);
-    if (choice !== question.correct) {
+    const correct = choice === question.correct;
+    const firstTry = answerState === "idle";
+    // Only the first wrong try counts as a miss, so tapping through choices doesn't pile up.
+    if (correct || firstTry) {
+      setProgress((current) => applyAnswer(current, {
+        level,
+        minute: question.minute,
+        correct,
+        firstTry,
+        rewarded: correct,
+      }));
+    }
+    if (!correct) {
       setAnswerState("wrong");
-      setProgress((current) => ({ ...current, streak: 0 }));
       speak(stepsToSpeech(questionExplanation.steps));
       return;
     }
-
     setAnswerState("correct");
-    setProgress((current) => {
-      const wins = (current.levelWins[level] ?? 0) + 1;
-      const nextUnlocked = wins >= 3 && level < 5
-        ? Math.max(current.unlockedLevel, level + 1) as LearningLevel
-        : current.unlockedLevel;
-      return {
-        ...current,
-        stars: current.stars + 1,
-        streak: current.streak + 1,
-        unlockedLevel: nextUnlocked,
-        levelWins: { ...current.levelWins, [level]: wins },
-      };
-    });
   }
 
   function nextQuestion() {
     stopSpeech();
-    setQuestion(createQuestion(level));
+    setQuestion(createQuestion(level, progress.trickyMinutes));
     setSelectedAnswer(null);
     setAnswerState("idle");
   }
@@ -722,7 +705,9 @@ export function TijdmaatjesApp() {
             key={level}
             step={currentStep}
             speak={speak}
-            onStars={(stars) => setProgress((current) => ({ ...current, stars: current.stars + stars }))}
+            trickyMinutes={progress.trickyMinutes}
+            onAnswer={(result) => setProgress((current) => applyAnswer(current, { ...result, level }))}
+            onMissionDone={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
           />
         </TabsContent>
 

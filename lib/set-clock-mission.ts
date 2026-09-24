@@ -1,4 +1,5 @@
 import { hourWord, normalizeHour } from "./dutch-time.ts";
+import { pickMinute, type SavedProgress } from "./progress.ts";
 import type { ExplanationStep } from "./time-explainer.ts";
 
 // "Zet de klok": the child hears a time and sets the hands. A mission is five
@@ -92,16 +93,16 @@ export function allSetClockLines() {
   return [...lines];
 }
 
-function pick<T>(items: T[], random: () => number) {
-  return items[Math.floor(random() * items.length)];
-}
-
-export function createMission(minutes: number[], random: () => number = Math.random): MissionClock[] {
+export function createMission(
+  minutes: number[],
+  random: () => number = Math.random,
+  trickyMinutes: SavedProgress["trickyMinutes"] = {},
+): MissionClock[] {
   const targets: ClockTime[] = [];
   const seen = new Set<string>();
   const possible = 12 * minutes.length;
   while (targets.length < Math.min(MISSION_SIZE, possible)) {
-    const target = { hour: Math.floor(random() * 12) + 1, minute: pick(minutes, random) };
+    const target = { hour: Math.floor(random() * 12) + 1, minute: pickMinute(minutes, trickyMinutes, random) };
     const key = `${target.hour}:${target.minute}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -124,8 +125,12 @@ export function createMission(minutes: number[], random: () => number = Math.ran
   });
 }
 
-export function startMission(minutes: number[], random: () => number = Math.random): MissionState {
-  return { queue: createMission(minutes, random), index: 0, attempts: 0, firstTry: 0, finished: false };
+export function startMission(
+  minutes: number[],
+  random: () => number = Math.random,
+  trickyMinutes: SavedProgress["trickyMinutes"] = {},
+): MissionState {
+  return { queue: createMission(minutes, random, trickyMinutes), index: 0, attempts: 0, firstTry: 0, finished: false };
 }
 
 export function checkClock(target: ClockTime, set: ClockTime) {

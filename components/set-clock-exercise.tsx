@@ -17,6 +17,7 @@ import {
   type ClockTime,
   type MissionState,
 } from "@/lib/set-clock-mission";
+import type { AnswerResult, SavedProgress } from "@/lib/progress";
 import { explainTime, type ExplanationStep } from "@/lib/time-explainer";
 
 type Phase = "intro" | "setting" | "wrong" | "correct" | "done";
@@ -24,13 +25,16 @@ type Phase = "intro" | "setting" | "wrong" | "correct" | "done";
 type SetClockExerciseProps = {
   step: LearningStep;
   speak: (texts: string | string[]) => void;
-  onStars: (stars: number) => void;
+  trickyMinutes: SavedProgress["trickyMinutes"];
+  /** Reported once per clock, on its first "Klaar!". */
+  onAnswer: (result: Omit<AnswerResult, "level">) => void;
+  onMissionDone: () => void;
 };
 
 // Remount (via `key`) when the level changes to start a fresh mission.
-export function SetClockExercise({ step, speak, onStars }: SetClockExerciseProps) {
+export function SetClockExercise({ step, speak, trickyMinutes, onAnswer, onMissionDone }: SetClockExerciseProps) {
   // Only mounted on the client once the tab opens, so a random mission can't cause a hydration mismatch.
-  const [mission, setMission] = useState<MissionState>(() => startMission(step.minutes));
+  const [mission, setMission] = useState<MissionState>(() => startMission(step.minutes, Math.random, trickyMinutes));
   const [phase, setPhase] = useState<Phase>("intro");
   const [clock, setClock] = useState<ClockTime>(() => mission.queue[0].start);
   const [feedback, setFeedback] = useState<ExplanationStep[]>([]);
@@ -65,15 +69,21 @@ export function SetClockExercise({ step, speak, onStars }: SetClockExerciseProps
 
   function check() {
     const result = checkClock(current.target, clock);
-    // Same rule as the mission score: stars only for original clocks right the first time.
-    const firstTry = mission.attempts === 0 && !current.retry;
+    if (mission.attempts === 0) {
+      // Same rule as the mission score: stars and level wins only for original clocks right the first time.
+      onAnswer({
+        minute: current.target.minute,
+        correct: result.correct,
+        firstTry: true,
+        rewarded: result.correct && !current.retry,
+      });
+    }
     setMission((state) => recordAnswer(state, result.correct));
     if (result.correct) {
       const line = SET_CLOCK_LINES.correct[mission.index % SET_CLOCK_LINES.correct.length];
       setPraise(line);
       setPhase("correct");
       speak(line);
-      if (firstTry) onStars(1);
       return;
     }
     const steps = wrongFeedback(current.target, result);
@@ -88,14 +98,14 @@ export function SetClockExercise({ step, speak, onStars }: SetClockExerciseProps
     if (state.finished) {
       setPhase("done");
       speak(SET_CLOCK_LINES.done);
-      onStars(1);
+      onMissionDone();
       return;
     }
     begin(state);
   }
 
   function newMission() {
-    const state = startMission(step.minutes);
+    const state = startMission(step.minutes, Math.random, trickyMinutes);
     setMission(state);
     begin(state);
   }
