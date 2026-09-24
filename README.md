@@ -14,6 +14,15 @@ Tijdmaatjes is a privacy-friendly Dutch clock-learning web app for children aged
 4. Vijf en tien over / voor
 5. Vijf en tien voor / over half
 
+### Explaining “vijf/tien over” and “vijf/tien voor”
+
+The **12 is the start and finish** (a checkered flag): _over_ = the long hand just left the start, _voor_ = it is almost back at the finish, and around _voor_ you name the next hour.
+
+- From level 4 the clock is split in two halves, **over** (right) and **voor** (left). Level 5 refines this into four quarters.
+- Levels 3–4 show **blue minute numbers** (5, 10 … 55) outside the rim, in the color of the long hand: the 1 means 5 minutes, the 2 means 10.
+- Jumps are labeled in minutes (**5**, **10**), appear one after another, and in Ontdek **Luister** counts along: _vijf… tien… tien over acht_.
+- **Mini-lesson “Over en voor”** opens the first time level 4 is chosen (replay via _Uitleg: over en voor_), ending with a drag challenge.
+
 ### Explaining “voor half” and “over half”
 
 Children learn one picture: **the 6 is the _halte_ (bus stop)**. Each number is one jump of five minutes. Just before the halte you say _voor half_, just after it _over half_, and around half you always name the **next** hour (`08:25 = vijf voor half negen`).
@@ -91,12 +100,12 @@ pnpm speech:check      # transcribes every clip and lists ones that don't match 
 app/                            App shell, styles, and server-side TTS proxy
 components/clock-face.tsx       Accessible draggable SVG clock
 components/tijdmaatjes-app.tsx  Learning, practice, speech, and progress flows
-components/rond-half-lesson.tsx “Rond half” mini-lesson dialog
+components/clock-lesson.tsx     Mini-lesson dialog (“Over en voor”, “Rond half”)
 components/time-explanation.tsx Phrase chips and step-by-step explanation
 components/set-clock-exercise.tsx “Zet de klok” tab
 lib/dutch-time.ts               Pure Dutch time-language rules
 lib/time-explainer.ts           Halte model: zones, jumps, chips, and steps per time
-lib/rond-half-lesson.ts         Mini-lesson content
+lib/lessons.ts                  Mini-lesson content
 lib/speech-clips.ts             Every spoken text and its clip file name
 lib/set-clock-mission.ts        Missions, answer checks, and “zet …” instructions
 lib/clock-geometry.ts           Pointer angle → hour/minute for dragging hands

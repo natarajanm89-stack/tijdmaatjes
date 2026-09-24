@@ -1,4 +1,5 @@
 import type { LearningLevel } from "./dutch-time.ts";
+import type { LessonId } from "./lessons.ts";
 
 // What a child has achieved, kept only in this browser's localStorage.
 export type SavedProgress = {
@@ -6,7 +7,8 @@ export type SavedProgress = {
   streak: number;
   unlockedLevel: LearningLevel;
   levelWins: Partial<Record<LearningLevel, number>>;
-  seenRondHalfLesson: boolean;
+  /** Mini-lessons already shown, so they only open by themselves once. */
+  seenLessons: Partial<Record<LessonId, true>>;
   /**
    * Minute patterns the child finds hard (e.g. 25 = "vijf voor half") with a
    * weight of 1–3. A miss raises it, a first-try hit lowers it, 0 removes it.
@@ -20,9 +22,17 @@ export const DEFAULT_PROGRESS: SavedProgress = {
   // The supplied worksheet starts at kwartieren; keep earlier skills open for review.
   unlockedLevel: 3,
   levelWins: {},
-  seenRondHalfLesson: false,
+  seenLessons: {},
   trickyMinutes: {},
 };
+
+/** Fills in defaults for progress saved by older versions of the app. */
+export function normalizeProgress(saved: Record<string, unknown>): SavedProgress {
+  const { seenRondHalfLesson, ...rest } = saved;
+  const progress = { ...DEFAULT_PROGRESS, ...rest } as SavedProgress;
+  if (seenRondHalfLesson === true) progress.seenLessons = { ...progress.seenLessons, "rond-half": true };
+  return progress;
+}
 
 export const WINS_TO_UNLOCK = 3;
 const MAX_TRICKY_WEIGHT = 3;

@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, Lightbulb, RotateCcw, Sparkles, Star, Target, Volume2 } from "lucide-react";
 import { useState } from "react";
-import { ClockFace } from "@/components/clock-face";
+import { ClockFace, type GuideMode } from "@/components/clock-face";
 import { ExplanationSteps, PhraseChips, stepsToSpeech } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
 import { formatDutchTime, normalizeHour, type LearningStep } from "@/lib/dutch-time";
@@ -26,13 +26,14 @@ type SetClockExerciseProps = {
   step: LearningStep;
   speak: (texts: string | string[]) => void;
   trickyMinutes: SavedProgress["trickyMinutes"];
+  clockHelp: { guideMode: GuideMode; minuteNumbers: boolean };
   /** Reported once per clock, on its first "Klaar!". */
   onAnswer: (result: Omit<AnswerResult, "level">) => void;
   onMissionDone: () => void;
 };
 
 // Remount (via `key`) when the level changes to start a fresh mission.
-export function SetClockExercise({ step, speak, trickyMinutes, onAnswer, onMissionDone }: SetClockExerciseProps) {
+export function SetClockExercise({ step, speak, trickyMinutes, clockHelp, onAnswer, onMissionDone }: SetClockExerciseProps) {
   // Only mounted on the client once the tab opens, so a random mission can't cause a hydration mismatch.
   const [mission, setMission] = useState<MissionState>(() => startMission(step.minutes, Math.random, trickyMinutes));
   const [phase, setPhase] = useState<Phase>("intro");
@@ -122,6 +123,7 @@ export function SetClockExercise({ step, speak, trickyMinutes, onAnswer, onMissi
           minute={clock.minute}
           interactive={phase === "setting" || phase === "wrong"}
           guide={phase === "wrong" || phase === "correct" ? targetExplanation : null}
+          {...clockHelp}
           onChange={moveHands}
         />
         {(phase === "setting" || phase === "wrong") && (

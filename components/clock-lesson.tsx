@@ -7,19 +7,18 @@ import { PhraseChips } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatDutchTime } from "@/lib/dutch-time";
-import { RONDHALF_CHALLENGE, RONDHALF_LESSON } from "@/lib/rond-half-lesson";
+import type { ClockLesson as Lesson } from "@/lib/lessons";
 import { explainTime } from "@/lib/time-explainer";
 
-const CHALLENGE_INDEX = RONDHALF_LESSON.length;
-
 /** What to say when a screen opens: its lines, then its time phrase. */
-export function lessonScreenSpeech(index: number) {
-  if (index >= CHALLENGE_INDEX) return RONDHALF_CHALLENGE.lines;
-  const screen = RONDHALF_LESSON[index];
+export function lessonScreenSpeech(lesson: Lesson, index: number) {
+  if (index >= lesson.screens.length) return lesson.challenge.lines;
+  const screen = lesson.screens[index];
   return [...screen.lines, formatDutchTime(screen.hour, screen.minute)];
 }
 
-type RondHalfLessonProps = {
+type ClockLessonProps = {
+  lesson: Lesson;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   speak: (texts: string[]) => void;
@@ -27,28 +26,30 @@ type RondHalfLessonProps = {
 };
 
 // Remount (via `key`) to restart from the first screen.
-export function RondHalfLesson({ open, onOpenChange, speak, onChallengeSolved }: RondHalfLessonProps) {
+export function ClockLesson({ lesson, open, onOpenChange, speak, onChallengeSolved }: ClockLessonProps) {
+  const { screens, challenge } = lesson;
+  const challengeIndex = screens.length;
   const [index, setIndex] = useState(0);
-  const [challengeTime, setChallengeTime] = useState(RONDHALF_CHALLENGE.start);
+  const [challengeTime, setChallengeTime] = useState(challenge.start);
   const [solved, setSolved] = useState(false);
 
-  const isChallenge = index === CHALLENGE_INDEX;
-  const screen = isChallenge ? null : RONDHALF_LESSON[index];
+  const isChallenge = index === challengeIndex;
+  const screen = isChallenge ? null : screens[index];
   const shown = screen ?? challengeTime;
   const explanation = explainTime(shown.hour, shown.minute);
 
   function goTo(nextIndex: number) {
     setIndex(nextIndex);
-    speak(lessonScreenSpeech(nextIndex));
+    speak(lessonScreenSpeech(lesson, nextIndex));
   }
 
   function moveChallengeClock(hour: number, minute: number) {
     if (solved) return;
     setChallengeTime({ hour, minute });
-    const { target } = RONDHALF_CHALLENGE;
+    const { target } = challenge;
     if (hour === target.hour && minute === target.minute) {
       setSolved(true);
-      speak([RONDHALF_CHALLENGE.success]);
+      speak([challenge.success]);
       onChallengeSolved();
     }
   }
@@ -56,8 +57,8 @@ export function RondHalfLesson({ open, onOpenChange, speak, onChallengeSolved }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="lesson-dialog">
-        <div className="lesson-progress" aria-label={`Stap ${index + 1} van ${CHALLENGE_INDEX + 1}`}>
-          {Array.from({ length: CHALLENGE_INDEX + 1 }, (_, dot) => (
+        <div className="lesson-progress" aria-label={`Stap ${index + 1} van ${challengeIndex + 1}`}>
+          {Array.from({ length: challengeIndex + 1 }, (_, dot) => (
             <span key={dot} className={dot === index ? "is-current" : dot < index ? "is-done" : ""} />
           ))}
         </div>
@@ -69,28 +70,30 @@ export function RondHalfLesson({ open, onOpenChange, speak, onChallengeSolved }:
             compact
             interactive={isChallenge && !solved}
             guide={explanation}
+            guideMode={lesson.guideMode}
+            minuteNumbers={lesson.minuteNumbers}
             onChange={moveChallengeClock}
           />
 
           <div className="lesson-copy">
-            <span className="eyebrow">Rond half</span>
-            <DialogTitle className="lesson-title">{screen?.title ?? RONDHALF_CHALLENGE.title}</DialogTitle>
+            <span className="eyebrow">{lesson.name}</span>
+            <DialogTitle className="lesson-title">{screen?.title ?? challenge.title}</DialogTitle>
             <DialogDescription asChild>
               <div className="lesson-lines" lang="nl-NL">
-                {(screen?.lines ?? RONDHALF_CHALLENGE.lines).map((line) => <p key={line}>{line}</p>)}
+                {(screen?.lines ?? challenge.lines).map((line) => <p key={line}>{line}</p>)}
               </div>
             </DialogDescription>
             {(screen || solved) && <PhraseChips explanation={explanation} className="lesson-phrase" />}
             {solved && (
               <p className="lesson-success" aria-live="polite">
-                <Check aria-hidden="true" /> {RONDHALF_CHALLENGE.success} Je verdient een ster.
+                <Check aria-hidden="true" /> {challenge.success} Je verdient een ster.
               </p>
             )}
           </div>
         </div>
 
         <div className="lesson-actions">
-          <Button variant="outline" onClick={() => speak(lessonScreenSpeech(index))}>
+          <Button variant="outline" onClick={() => speak(lessonScreenSpeech(lesson, index))}>
             <Volume2 aria-hidden="true" /> Nog eens
           </Button>
           <span className="lesson-nav">

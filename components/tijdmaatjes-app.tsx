@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ClockFace } from "@/components/clock-face";
-import { lessonScreenSpeech, RondHalfLesson } from "@/components/rond-half-lesson";
+import { ClockLesson, lessonScreenSpeech } from "@/components/clock-lesson";
 import { SetClockExercise } from "@/components/set-clock-exercise";
 import { ExplanationSteps, PhraseChips, stepsToSpeech } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,8 @@ import {
   pronunciationScore,
   type LearningLevel,
 } from "@/lib/dutch-time";
-import { applyAnswer, DEFAULT_PROGRESS, pickMinute, type SavedProgress } from "@/lib/progress";
+import { lessonForLevel, type ClockLesson as Lesson } from "@/lib/lessons";
+import { applyAnswer, DEFAULT_PROGRESS, normalizeProgress, pickMinute, type SavedProgress } from "@/lib/progress";
 import { speechClipPath } from "@/lib/speech-clips";
 import { explainTime } from "@/lib/time-explainer";
 
@@ -113,7 +114,7 @@ function readProgress() {
   if (!progressSnapshot) {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      progressSnapshot = saved ? { ...DEFAULT_PROGRESS, ...JSON.parse(saved) } : DEFAULT_PROGRESS;
+      progressSnapshot = saved ? normalizeProgress(JSON.parse(saved)) : DEFAULT_PROGRESS;
     } catch {
       // The app remains fully usable when private browsing blocks storage.
       progressSnapshot = DEFAULT_PROGRESS;
@@ -221,6 +222,7 @@ export function TijdmaatjesApp() {
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const playbackRef = useRef(0);
   const [lessonOpen, setLessonOpen] = useState(false);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
   const [lessonRun, setLessonRun] = useState(0);
   const [showSpeakWhy, setShowSpeakWhy] = useState(false);
   const recognitionRef = useRef<RecognitionInstance | null>(null);
@@ -228,6 +230,13 @@ export function TijdmaatjesApp() {
   const phrase = formatDutchTime(hour, minute);
   const speakPhrase = formatDutchTime(speakTime.hour, speakTime.minute);
   const explanation = useMemo(() => explainTime(hour, minute), [hour, minute]);
+  // Clock helpers grow with the level: halves (over/voor) and blue minute numbers
+  // while learning five-minute steps, then quarters around half.
+  const clockHelp = {
+    guideMode: level <= 4 ? "halves" : "quarters",
+    minuteNumbers: level === 3 || level === 4,
+  } as const;
+  const levelLesson = lessonForLevel(level);
   const questionExplanation = useMemo(() => explainTime(question.hour, question.minute), [question]);
   const speakExplanation = useMemo(() => explainTime(speakTime.hour, speakTime.minute), [speakTime]);
   const currentStep = LEARNING_STEPS[level - 1];
@@ -328,25 +337,36 @@ export function TijdmaatjesApp() {
     setAnswerState("idle");
   }, []);
 
-  function openLesson() {
+  function openLesson(next: Lesson) {
+    setLesson(next);
     setLessonRun((run) => run + 1);
     setLessonOpen(true);
-    speak(lessonScreenSpeech(0));
+    speak(lessonScreenSpeech(next, 0));
   }
 
   function closeLesson() {
     setLessonOpen(false);
     stopSpeech();
-    setProgress((current) => ({ ...current, seenRondHalfLesson: true }));
+    if (lesson) {
+      const { id } = lesson;
+      setProgress((current) => ({ ...current, seenLessons: { ...current.seenLessons, [id]: true } }));
+    }
   }
 
-  // Mission buttons are a child's tap, so the first visit to "Rond half" may start the lesson with sound.
+  // Mission buttons are a child's tap, so a level's first visit may start its lesson with sound.
   function selectMission(nextLevel: LearningLevel) {
     chooseLevel(nextLevel);
-    if (nextLevel === 5 && !progress.seenRondHalfLesson) {
+    const next = lessonForLevel(nextLevel);
+    if (next && !progress.seenLessons[next.id]) {
       setActiveTab("discover");
-      openLesson();
+      openLesson(next);
     }
+  }
+
+  // With jumps on the clock, count along before the phrase: "vijf… tien… tien over acht".
+  function listen() {
+    const counting = level >= 4 ? ["vijf", "tien"].slice(0, explanation.jumps) : [];
+    speak([...counting, phrase]);
   }
 
   function adjustTime(kind: "hour" | "minute", amount: number) {
@@ -573,7 +593,8 @@ export function TijdmaatjesApp() {
               hour={hour}
               minute={minute}
               interactive
-              guide={level === 5 ? explanation : null}
+              guide={level >= 4 ? explanation : null}
+              {...clockHelp}
               onChange={(nextHour, nextMinute) => {
                 setHour(nextHour);
                 setMinute(nextMinute);
@@ -602,7 +623,7 @@ export function TijdmaatjesApp() {
             <p className="say-slowly">Zeg rustig mee: {phraseParts.join(" · ")}</p>
 
             <div className="primary-actions">
-              <Button className="listen-button" size="lg" onClick={() => speak(phrase)} disabled={audioState !== "idle"}>
+              <Button className="listen-button" size="lg" onClick={listen} disabled={audioState !== "idle"}>
                 <Volume2 aria-hidden="true" />
                 {audioState === "loading" ? "Stem laden…" : audioState === "playing" ? "Luister…" : "Luister"}
               </Button>
@@ -619,9 +640,9 @@ export function TijdmaatjesApp() {
               <div>
                 <strong>Kloktruc</strong>
                 <p>{currentStep.description}</p>
-                {level === 5 && (
-                  <Button variant="outline" size="sm" className="lesson-open-button" onClick={openLesson}>
-                    <Sparkles aria-hidden="true" /> Uitleg: de halte
+                {levelLesson && (
+                  <Button variant="outline" size="sm" className="lesson-open-button" onClick={() => openLesson(levelLesson)}>
+                    <Sparkles aria-hidden="true" /> Uitleg: {levelLesson.name.toLowerCase()}
                   </Button>
                 )}
               </div>
@@ -646,6 +667,7 @@ export function TijdmaatjesApp() {
               minute={question.minute}
               compact
               guide={answerState === "wrong" ? questionExplanation : null}
+              {...clockHelp}
             />
             <Button variant="outline" className="hear-question" onClick={() => speak(question.correct)}>
               <Ear aria-hidden="true" /> Hoor de tijd
@@ -706,6 +728,7 @@ export function TijdmaatjesApp() {
             step={currentStep}
             speak={speak}
             trickyMinutes={progress.trickyMinutes}
+            clockHelp={clockHelp}
             onAnswer={(result) => setProgress((current) => applyAnswer(current, { ...result, level }))}
             onMissionDone={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
           />
@@ -714,7 +737,13 @@ export function TijdmaatjesApp() {
         <TabsContent value="speak" className="workspace-card speaking-layout">
           <section className="speaking-clock">
             <div className="card-kicker"><Mic aria-hidden="true" /> Luister, spreek, groei</div>
-            <ClockFace hour={speakTime.hour} minute={speakTime.minute} compact guide={showSpeakWhy ? speakExplanation : null} />
+            <ClockFace
+              hour={speakTime.hour}
+              minute={speakTime.minute}
+              compact
+              guide={showSpeakWhy ? speakExplanation : null}
+              {...clockHelp}
+            />
             <Button variant="outline" onClick={nextSpeakPrompt}>Andere klok <RotateCcw aria-hidden="true" /></Button>
           </section>
 
@@ -775,13 +804,16 @@ export function TijdmaatjesApp() {
         </div>
       </details>
 
-      <RondHalfLesson
-        key={lessonRun}
-        open={lessonOpen}
-        onOpenChange={(open) => (open ? setLessonOpen(true) : closeLesson())}
-        speak={speak}
-        onChallengeSolved={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
-      />
+      {lesson && (
+        <ClockLesson
+          key={lessonRun}
+          lesson={lesson}
+          open={lessonOpen}
+          onOpenChange={(open) => (open ? setLessonOpen(true) : closeLesson())}
+          speak={speak}
+          onChallengeSolved={() => setProgress((current) => ({ ...current, stars: current.stars + 1 }))}
+        />
+      )}
 
       <footer className="app-footer">Gemaakt om samen hardop te oefenen · Voor kinderen van 6–8 jaar</footer>
     </main>

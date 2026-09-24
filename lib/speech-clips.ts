@@ -1,5 +1,5 @@
 import { formatDutchTime } from "./dutch-time.ts";
-import { RONDHALF_CHALLENGE, RONDHALF_LESSON } from "./rond-half-lesson.ts";
+import { LESSONS } from "./lessons.ts";
 import { allSetClockLines } from "./set-clock-mission.ts";
 import { explainTime } from "./time-explainer.ts";
 
@@ -33,9 +33,11 @@ export function allNarrationLines() {
   for (const { hour, minute } of everyClockTime()) {
     for (const step of explainTime(hour, minute).steps) step.say.forEach((line) => lines.add(line));
   }
-  for (const screen of RONDHALF_LESSON) screen.lines.forEach((line) => lines.add(line));
-  RONDHALF_CHALLENGE.lines.forEach((line) => lines.add(line));
-  lines.add(RONDHALF_CHALLENGE.success);
+  for (const lesson of LESSONS) {
+    for (const screen of lesson.screens) screen.lines.forEach((line) => lines.add(line));
+    lesson.challenge.lines.forEach((line) => lines.add(line));
+    lines.add(lesson.challenge.success);
+  }
   allSetClockLines().forEach((line) => lines.add(line));
   return [...lines];
 }
