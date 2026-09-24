@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { hourFromAngle, minuteFromAngle } from "@/lib/clock-geometry";
 import { formatDutchTime, normalizeHour } from "@/lib/dutch-time";
 import type { ClockZone, TimeExplanation } from "@/lib/time-explainer";
 
@@ -105,10 +106,9 @@ export function ClockFace({
     const normalized = (degrees + 360) % 360;
 
     if (kind === "minute") {
-      onChange(hour, (Math.round(normalized / 30) * 5) % 60);
+      onChange(hour, minuteFromAngle(normalized));
     } else {
-      const nextHour = Math.round(normalized / 30) % 12;
-      onChange(nextHour === 0 ? 12 : nextHour, minute);
+      onChange(hourFromAngle(normalized, minute), minute);
     }
   }
 

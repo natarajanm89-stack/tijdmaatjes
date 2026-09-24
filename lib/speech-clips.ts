@@ -1,5 +1,6 @@
 import { formatDutchTime } from "./dutch-time.ts";
 import { RONDHALF_CHALLENGE, RONDHALF_LESSON } from "./rond-half-lesson.ts";
+import { allSetClockLines } from "./set-clock-mission.ts";
 import { explainTime } from "./time-explainer.ts";
 
 // Everything the app can speak is known up front: clock times on five-minute
@@ -35,6 +36,7 @@ export function allNarrationLines() {
   for (const screen of RONDHALF_LESSON) screen.lines.forEach((line) => lines.add(line));
   RONDHALF_CHALLENGE.lines.forEach((line) => lines.add(line));
   lines.add(RONDHALF_CHALLENGE.success);
+  allSetClockLines().forEach((line) => lines.add(line));
   return [...lines];
 }
 

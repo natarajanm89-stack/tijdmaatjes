@@ -14,11 +14,13 @@ import {
   RotateCcw,
   Sparkles,
   Star,
+  Target,
   Volume2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ClockFace } from "@/components/clock-face";
 import { lessonScreenSpeech, RondHalfLesson } from "@/components/rond-half-lesson";
+import { SetClockExercise } from "@/components/set-clock-exercise";
 import { ExplanationSteps, PhraseChips, stepsToSpeech } from "@/components/time-explanation";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -35,7 +37,7 @@ import {
 import { speechClipPath } from "@/lib/speech-clips";
 import { explainTime } from "@/lib/time-explainer";
 
-type AppTab = "discover" | "practice" | "speak";
+type AppTab = "discover" | "practice" | "setclock" | "speak";
 type AnswerState = "idle" | "wrong" | "correct";
 type AudioState = "idle" | "loading" | "playing";
 
@@ -575,6 +577,9 @@ export function TijdmaatjesApp() {
         <TabsList className="mode-tabs" aria-label="Kies een speelstand">
           <TabsTrigger value="discover"><Hand aria-hidden="true" /> Ontdek</TabsTrigger>
           <TabsTrigger value="practice"><Sparkles aria-hidden="true" /> Oefen</TabsTrigger>
+          <TabsTrigger value="setclock" aria-label="Zet de klok">
+            <Target aria-hidden="true" /> <span className="tab-label-long">Zet de klok</span><span className="tab-label-short" aria-hidden="true">Zet</span>
+          </TabsTrigger>
           <TabsTrigger value="speak"><Mic aria-hidden="true" /> Praat</TabsTrigger>
         </TabsList>
 
@@ -710,6 +715,15 @@ export function TijdmaatjesApp() {
               )}
             </div>
           </section>
+        </TabsContent>
+
+        <TabsContent value="setclock" className="workspace-card">
+          <SetClockExercise
+            key={level}
+            step={currentStep}
+            speak={speak}
+            onStars={(stars) => setProgress((current) => ({ ...current, stars: current.stars + stars }))}
+          />
         </TabsContent>
 
         <TabsContent value="speak" className="workspace-card speaking-layout">

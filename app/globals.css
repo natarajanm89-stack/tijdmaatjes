@@ -928,6 +928,75 @@ button { -webkit-tap-highlight-color: transparent; }
 .lesson-nav { display: flex; gap: 8px; }
 .lesson-actions button { min-height: 44px; border-radius: 13px; font-weight: 900; }
 
+/* ---- "Zet de klok" exercise ---- */
+.mode-tabs { width: min(640px, 100%); }
+.tab-label-short { display: none; }
+
+.setclock-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  min-height: 600px;
+}
+
+.setclock-clock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: clamp(24px, 4vw, 44px);
+  border-right: 2px solid #d3e5ee;
+  background:
+    radial-gradient(circle at 50% 42%, #fff 0 32%, transparent 32.5%),
+    linear-gradient(145deg, #eaf9f4 0%, #edf9ff 54%, #fff5d9 100%);
+}
+
+.setclock-task {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(28px, 5vw, 56px);
+}
+
+.setclock-task h2 { margin: 2px 0 0; color: var(--blue-deep); font-size: 1.9rem; font-weight: 950; }
+.setclock-phrase { font-size: clamp(2rem, 4.2vw, 3.6rem); }
+.setclock-hint { margin: 14px 0 0; color: #557087; font-weight: 800; }
+.setclock-check { border-bottom: 4px solid #0c6b5d; background: var(--aqua); }
+.setclock-check:hover { background: #148f80; }
+
+.setclock-dots { display: flex; flex-wrap: wrap; gap: 6px; max-width: 160px; }
+.setclock-dots span {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #b9d4e4;
+  border-radius: 50%;
+  background: #fff;
+}
+.setclock-dots .is-done { border-color: var(--aqua); background: var(--aqua); }
+.setclock-dots .is-current { border-color: var(--blue); box-shadow: 0 0 0 3px #cfe5f7; }
+.setclock-dots .is-retry { border-style: dashed; }
+
+.setclock-intro { margin-top: 18px; color: #3d5a70; font-weight: 750; }
+.setclock-intro ul { display: grid; gap: 6px; margin: 12px 0 22px; padding-left: 20px; }
+.setclock-start { width: fit-content; min-height: 52px; border-radius: 15px; font-weight: 900; }
+
+.setclock-done { display: grid; justify-items: start; gap: 8px; margin-top: 18px; }
+.setclock-done h3 { margin: 0; color: var(--blue-deep); font-size: 2rem; font-weight: 950; }
+.setclock-done p { margin: 0; color: #3d5a70; font-weight: 800; }
+.setclock-done .setclock-bonus { color: #8a6412; }
+.setclock-done button { margin-top: 10px; min-height: 52px; border-radius: 15px; font-weight: 900; }
+.setclock-trophy {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--yellow);
+  color: #8a5a00;
+}
+.setclock-trophy svg { width: 36px; height: 36px; }
+
 @media (max-width: 980px) {
   .mission-panel { grid-template-columns: 1fr; gap: 14px; }
 
@@ -938,7 +1007,8 @@ button { -webkit-tap-highlight-color: transparent; }
     scrollbar-width: thin;
   }
 
-  .discover-grid, .practice-layout, .speaking-layout { grid-template-columns: 1fr; }
+  .discover-grid, .practice-layout, .speaking-layout, .setclock-layout { grid-template-columns: 1fr; }
+  .setclock-clock { border-right: 0; border-bottom: 2px solid #d3e5ee; }
 
   .practice-question {
     border-right: 0;
@@ -957,7 +1027,10 @@ button { -webkit-tap-highlight-color: transparent; }
   .brand small, .scoreboard .streak { display: none; }
   .brand-mark { width: 46px; height: 46px; }
   .scoreboard > span { min-height: 40px; }
-  .mode-tabs button { padding-inline: 8px; font-size: 0.86rem; }
+  .mode-tabs button { padding-inline: 6px; font-size: 0.84rem; }
+  .tab-label-long { display: none; }
+  .tab-label-short { display: inline; }
+  .setclock-clock, .setclock-task { padding: 28px 18px; }
   .workspace-card { border-radius: 24px; }
 
   .clock-workbench, .practice-question, .speaking-clock,

@@ -23,6 +23,10 @@ Children learn one picture: **the 6 is the _halte_ (bus stop)**. Each number is 
 - **Oefen** turns a wrong answer into three spoken steps on a guided clock.
 - **Praat** has a _Waarom zeg je dit?_ button with the same steps.
 
+### Zet de klok
+
+The fourth tab turns it around: the child hears a time and sets the hands, then taps **Klaar!**. A mission is five clocks from the chosen level. On clocks 1–3 the short hand already points at the right hour; on clocks 4–5 both hands start wrong. A wrong setting praises the hand that is right and gives a spoken _zet …_ instruction for the other, with the halte overlay on the clock. A clock missed on the first try comes back once at the end (at most two). Stars: one per clock right on the first try, plus a bonus star per finished mission. The logic lives in `lib/set-clock-mission.ts`.
+
 All of it comes from `explainTime()` in `lib/time-explainer.ts`, so every screen explains a time the same way.
 
 Progress and stars are stored only in the current browser. There are no accounts, ads, or analytics. Tijdmaatjes does not retain recordings; when speech recognition is used, the browser's own speech service handles that processing.
@@ -88,10 +92,13 @@ components/clock-face.tsx       Accessible draggable SVG clock
 components/tijdmaatjes-app.tsx  Learning, practice, speech, and progress flows
 components/rond-half-lesson.tsx “Rond half” mini-lesson dialog
 components/time-explanation.tsx Phrase chips and step-by-step explanation
+components/set-clock-exercise.tsx “Zet de klok” tab
 lib/dutch-time.ts               Pure Dutch time-language rules
 lib/time-explainer.ts           Halte model: zones, jumps, chips, and steps per time
 lib/rond-half-lesson.ts         Mini-lesson content
 lib/speech-clips.ts             Every spoken text and its clip file name
+lib/set-clock-mission.ts        Missions, answer checks, and “zet …” instructions
+lib/clock-geometry.ts           Pointer angle → hour/minute for dragging hands
 tests/                          Unit tests (`pnpm test`, Node's built-in runner)
 public/favicon.svg              App icon
 ```
