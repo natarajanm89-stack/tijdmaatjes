@@ -25,6 +25,8 @@ test("Tamil parts contain no Latin words; Dutch words go to the Dutch voice", ()
       if (typeof part === "string") {
         assert.ok(/[஀-௿]/.test(part), `not Tamil: ${part}`);
         assert.ok(!/[A-Za-z]/.test(part), `Latin text in Tamil part of "${line}": ${part}`);
+        // The Tamil voice misreads digits ("12-இல்" came out as "toilet"): write numbers as words.
+        assert.ok(!/\d/.test(part), `digit in Tamil part of "${line}": ${part}`);
       }
     }
   }
